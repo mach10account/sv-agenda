@@ -472,6 +472,7 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
 
 .griglia {
   display: grid;
+  width: 100%;
   min-width: max-content;
   background: #fff;
   border-bottom: 1px solid var(--line);
@@ -482,6 +483,7 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
    in mezzo agli appuntamenti. */
 .intestazioni {
   display: grid;
+  width: 100%;
   min-width: max-content;
   position: sticky;
   top: 0;
@@ -517,7 +519,9 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
 
 .colonna {
   position: relative;
-  width: 190px;
+  /* Nessuna larghezza fissa: la colonna deve riempire la cella della griglia.
+     Con una larghezza fissa lo sfondo si fermava li' e le righe orarie
+     sparivano nella parte restante della cella. */
   border-left: 1px solid var(--line);
   /* Le righe della griglia sono disegnate dallo sfondo: una linea piena a
      ogni ora, una piu' tenue alla mezza. */
