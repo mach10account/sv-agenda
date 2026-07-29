@@ -185,7 +185,7 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
 
 /* --------------------------------------------------------- data grande */
 
-.titolo { display: flex; flex-direction: column; gap: 1px; min-width: 150px; }
+.titolo { display: flex; flex-direction: column; gap: 1px; min-width: 150px; position: relative; }
 .titolo .anno { font-size: 12px; color: var(--muted); font-weight: 600; }
 .titolo .conteggio { font-size: 12.5px; color: var(--muted); }
 
@@ -198,16 +198,84 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
   cursor: pointer;
   display: inline-block;
 }
-/* Il selettore data nativo copre il titolo: si tocca il titolo e si apre il
-   calendario del sistema, senza doverne disegnare uno. */
-.data-grande input[type="date"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
+.data-grande {
   border: 0;
-  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
+.data-grande .freccia { font-size: 15px; color: var(--muted); }
+
+/* Calendario disegnato da noi: quello di sistema cambia aspetto tra desktop e
+   telefono e non si puo' allineare al resto. */
+.calendario {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(22,35,63,.16);
+  padding: 14px;
+  width: 292px;
+}
+.calendario[hidden] { display: none; }
+
+.cal-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 650;
+  text-transform: capitalize;
+  font-size: 15px;
+}
+.cal-nav {
+  border: 0;
+  background: var(--navy-soft);
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink);
+  font-family: inherit;
+}
+.cal-nav:hover { background: #e2e7f1; }
+
+.cal-gg {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.cal-gg span {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cal-griglia { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+
+.cg {
+  aspect-ratio: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+.cg:hover { background: var(--navy-soft); }
+.cg.fuori { color: #c2c7d4; }
+.cg.oggi { color: var(--gold); font-weight: 700; }
+.cg.scelto { background: var(--navy); color: #fff; font-weight: 650; }
 
 /* -------------------------------------------------------- striscia giorni */
 
@@ -437,14 +505,15 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
   position: relative;
 }
 .ora {
-  height: var(--slot-h);
+  /* Una fascia per ora, non per mezz'ora: l'etichetta si scrive solo sull'ora
+     piena, come la si legge su un'agenda di carta. */
+  height: calc(var(--slot-h) * 2);
   font-size: 11.5px;
   color: var(--muted);
   text-align: right;
   padding-right: 8px;
   transform: translateY(-7px);
 }
-.ora.mezza { color: #aeb3c2; }
 
 .colonna {
   position: relative;
@@ -452,11 +521,19 @@ stroke='%236d7488' stroke-width='2' stroke-linecap='round'>\
   border-left: 1px solid var(--line);
   /* Le righe della griglia sono disegnate dallo sfondo: una linea piena a
      ogni ora, una piu' tenue alla mezza. */
+  /* Riga marcata sull'ora, riga tenue sulla mezza: senza questa differenza
+     l'etichetta sembra galleggiare tra due righe uguali. */
   background-image:
     repeating-linear-gradient(
       to bottom,
       var(--line) 0, var(--line) 1px,
-      transparent 1px, transparent var(--slot-h)
+      transparent 1px, transparent calc(var(--slot-h) * 2)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent var(--slot-h),
+      #eef0f5 var(--slot-h), #eef0f5 calc(var(--slot-h) + 1px),
+      transparent calc(var(--slot-h) + 1px), transparent calc(var(--slot-h) * 2)
     );
 }
 

@@ -189,10 +189,11 @@ function barra(conteggio = "") {
       <div class="riga-bassa">
         <div class="titolo">
           <span class="anno">${daIso(giorno).getFullYear()}</span>
-          <label class="data-grande">
+          <button class="data-grande" id="apriData">
             ${esc(soloGiorno ? fmt(giorno, { day: "numeric", month: "long" }) : etichettaPeriodo())}
-            <input type="date" id="scegliData" value="${giorno}">
-          </label>
+            <span class="freccia">⌄</span>
+          </button>
+          <div id="calendario" class="calendario" hidden></div>
           ${conteggio ? `<span class="conteggio">${esc(conteggio)}</span>` : ""}
         </div>
 
@@ -234,9 +235,7 @@ function agganciaBarra() {
   const scelto = document.querySelector(".gday.scelto");
   scelto?.scrollIntoView({ block: "nearest", inline: "center" });
 
-  document.getElementById("scegliData")?.addEventListener("change", (e) => {
-    if (e.target.value) { giorno = e.target.value; caricaAgenda(); }
-  });
+  agganciaCalendario();
 
   document.querySelectorAll(".vista").forEach((b) => {
     b.onclick = () => {
@@ -270,6 +269,71 @@ function agganciaBarra() {
   }
 
   agganciaRicerca();
+}
+
+// Calendario a tendina: si disegna qui invece di usare quello di sistema, che
+// su desktop e mobile ha aspetti diversi e non si puo' allineare al resto.
+function agganciaCalendario() {
+  const bottone = document.getElementById("apriData");
+  const box = document.getElementById("calendario");
+  if (!bottone || !box) return;
+
+  let meseAperto = primoDelMese(giorno);
+
+  const disegna = () => {
+    const primo = daIso(meseAperto);
+    const inizio = lunedi(meseAperto);
+    const celle = [];
+
+    for (let i = 0; i < 42; i++) {
+      const g = piuGiorni(inizio, i);
+      const d = daIso(g);
+      if (i >= 35 && d.getMonth() !== primo.getMonth()) break;
+      celle.push(`
+        <button class="cg ${d.getMonth() !== primo.getMonth() ? "fuori" : ""}
+                       ${g === giorno ? "scelto" : ""} ${g === oggi() ? "oggi" : ""}"
+                data-giorno="${g}">${d.getDate()}</button>`);
+    }
+
+    box.innerHTML = `
+      <div class="cal-testa">
+        <button class="cal-nav" data-passo="-1">‹</button>
+        <span>${esc(fmt(meseAperto, { month: "long", year: "numeric" }))}</span>
+        <button class="cal-nav" data-passo="1">›</button>
+      </div>
+      <div class="cal-gg">${["lun","mar","mer","gio","ven","sab","dom"]
+        .map((g) => `<span>${g}</span>`).join("")}</div>
+      <div class="cal-griglia">${celle.join("")}</div>`;
+
+    box.querySelectorAll(".cal-nav").forEach((b) => {
+      b.onclick = (e) => {
+        e.stopPropagation();
+        meseAperto = piuMesi(meseAperto, Number(b.dataset.passo));
+        disegna();
+      };
+    });
+
+    box.querySelectorAll(".cg").forEach((b) => {
+      b.onclick = (e) => {
+        e.stopPropagation();
+        giorno = b.dataset.giorno;
+        box.hidden = true;
+        caricaAgenda();
+      };
+    });
+  };
+
+  bottone.onclick = (e) => {
+    e.stopPropagation();
+    if (!box.hidden) { box.hidden = true; return; }
+    meseAperto = primoDelMese(giorno);
+    disegna();
+    box.hidden = false;
+  };
+
+  document.addEventListener("click", (e) => {
+    if (!box.hidden && !box.contains(e.target)) box.hidden = true;
+  });
 }
 
 function agganciaRicerca() {
@@ -350,10 +414,7 @@ function disegnaGiorno(dati) {
   const chiusura = minuti(dati.centro.chiusura);
   const altezza = (chiusura - apertura) * PX_MIN;
 
-  let ore = "";
-  for (let m = apertura; m < chiusura; m += 30) {
-    ore += `<div class="ora ${m % 60 === 30 ? "mezza" : ""}">${oraDaMinuti(m)}</div>`;
-  }
+  const ore = etichetteOre(apertura, chiusura);
 
   // Le colonne sono le operatrici o le cabine, a seconda dell'interruttore.
   // Chi lavora al bancone di solito ragiona per persona; la cabina serve
@@ -400,6 +461,7 @@ function disegnaGiorno(dati) {
            <div class="griglia" style="${css}">
              <div class="colonna-ore">${ore}</div>
              ${colonne}
+             ${rigaOraAttuale(apertura, chiusura, giorno)}
            </div>`}
     </div>`;
 
@@ -434,10 +496,7 @@ function disegnaSettimana(dati, da) {
   const altezza = (chiusura - apertura) * PX_MIN;
   const giorni = Array.from({ length: 7 }, (_, i) => piuGiorni(da, i));
 
-  let ore = "";
-  for (let m = apertura; m < chiusura; m += 30) {
-    ore += `<div class="ora ${m % 60 === 30 ? "mezza" : ""}">${oraDaMinuti(m)}</div>`;
-  }
+  const ore = etichetteOre(apertura, chiusura);
 
   const perGiorno = new Map(giorni.map((g) => [g, []]));
   for (const a of dati.appuntamenti) perGiorno.get(a.giorno)?.push(a);
@@ -471,6 +530,7 @@ function disegnaSettimana(dati, da) {
       <div class="griglia" style="${css}">
         <div class="colonna-ore">${ore}</div>
         ${colonne}
+        ${rigaOraAttuale(apertura, chiusura, oggi())}
       </div>
     </div>`;
 
@@ -614,6 +674,30 @@ function agganciaBlocchi(lista) {
       mostraScheda(lista.find((a) => a.id === el.dataset.id));
     };
   });
+}
+
+// Una fascia per ora piena. L'altezza la scriviamo esplicitamente perche' un
+// centro puo' aprire alle 8:30, e in quel caso la prima fascia e' piu' corta.
+function etichetteOre(apertura, chiusura) {
+  let html = "";
+  let m = apertura;
+  while (m < chiusura) {
+    const prossima = Math.min(m === apertura ? (Math.floor(m / 60) + 1) * 60 : m + 60, chiusura);
+    html += `<div class="ora" style="height:${(prossima - m) * PX_MIN}px">${oraDaMinuti(m)}</div>`;
+    m = prossima;
+  }
+  return html;
+}
+
+// Riga dell'ora corrente: si disegna solo se si sta guardando oggi e siamo
+// dentro l'orario di apertura. E' il riferimento che al bancone si cerca per
+// primo — "a che punto siamo".
+function rigaOraAttuale(apertura, chiusura, giornoMostrato) {
+  if (giornoMostrato !== oggi()) return "";
+  const adesso = new Date();
+  const m = adesso.getHours() * 60 + adesso.getMinutes();
+  if (m < apertura || m > chiusura) return "";
+  return `<div class="ora-attuale" style="top:${(m - apertura) * PX_MIN}px"></div>`;
 }
 
 function oraDalClick(e, col, apertura, chiusura) {
