@@ -729,3 +729,61 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 }
 
 .esito.vuoto.errore { color: #8d2b25; }
+
+/* ------------------------------------------------ pannello appuntamento */
+
+.scheda-larga { max-width: 520px; }
+
+/* Resta in cima anche scorrendo: Salva e Annulla sono i comandi principali
+   e devono essere sempre raggiungibili. */
+.scheda-testa {
+  position: sticky;
+  top: -22px;
+  background: #fff;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.scheda-testa h2 { margin: 0; }
+.scheda-azioni { display: flex; gap: 8px; }
+.scheda-azioni .btn { padding: 8px 16px; border-radius: 999px; font-size: 14px; }
+
+/* Le due scelte: appuntamento con un cliente, oppure spazio chiuso. */
+.tipi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+
+.tipo {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink);
+}
+.tipo:hover { border-color: #c3cbdb; }
+.tipo strong { font-size: 14.5px; }
+.tipo span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.tipo.attivo { border-color: var(--navy); background: var(--navy-soft); }
+
+.ris.vuoto { color: var(--muted); cursor: default; }
+
+/* Blocchi in griglia: neutri e rigati, si distinguono dagli appuntamenti. */
+.appuntamento.chiusura {
+  border-left-color: #9aa3b5;
+  color: #4a5163;
+  background:
+    repeating-linear-gradient(45deg,
+      #eef0f4 0, #eef0f4 6px,
+      #e6e9ef 6px, #e6e9ef 12px);
+}
+.appuntamento.chiusura .h { font-weight: 600; opacity: .8; font-size: 11.5px; }
+.appuntamento.chiusura .c { font-weight: 650; }

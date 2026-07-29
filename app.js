@@ -634,8 +634,20 @@ function disegnaMese(dati) {
 function bloccoHtml(a, top, altezza, corsia, corsie, compatto = false) {
   const h = Math.max(altezza - 2, 20);
   const largh = 100 / corsie;
-  const stile = `top:${top}px;height:${h}px;left:calc(${corsia * largh}% + 3px);` +
-                `width:calc(${largh}% - 6px);` +
+  const posizione = `top:${top}px;height:${h}px;left:calc(${corsia * largh}% + 3px);` +
+                    `width:calc(${largh}% - 6px);`;
+
+  // Un blocco non e' un cliente: niente colore del trattamento, aspetto
+  // neutro e rigato, cosi' a colpo d'occhio si vede che e' tempo chiuso.
+  if (a.tipo === "blocco") {
+    return `
+      <div class="appuntamento chiusura" data-id="${esc(a.id)}" style="${posizione}">
+        <div class="h">${esc(a.inizio)}–${esc(a.fine)}</div>
+        <div class="c">${esc(a.titolo || "Bloccato")}</div>
+      </div>`;
+  }
+
+  const stile = posizione +
                 `background:${tenue(a.colore)};border-left-color:${esc(a.colore)}`;
 
   // Nella settimana le colonne sono strette e si dividono ulteriormente quando
@@ -744,36 +756,37 @@ function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
 
   const { box, chiudi } = pannello();
   let clienteScelto = null;
+  let tipo = "appuntamento";
 
+  const DURATE = [15, 20, 30, 45, 60, 75, 90, 120, 150, 180];
+
+  box.classList.add("scheda-larga");
   box.innerHTML = `
-    <h2>Nuovo appuntamento</h2>
-    <p class="quando">${esc(fmt(dataIso, { weekday: "long", day: "numeric", month: "long" }))} · ore ${esc(ora)}</p>
-    <div id="errore"></div>
-
-    <label>Cliente</label>
-    <input id="qcliente" type="text" placeholder="Cerca per nome o telefono" autocomplete="off">
-    <div id="risultati" class="risultati"></div>
-    <div id="nuovocliente" hidden>
-      <div class="riga">
-        <input id="cnome" placeholder="Nome" autocomplete="off">
-        <input id="ccognome" placeholder="Cognome" autocomplete="off">
+    <div class="scheda-testa">
+      <h2>Nuovo appuntamento</h2>
+      <div class="scheda-azioni">
+        <button class="btn btn-chiaro" id="annulla">Annulla</button>
+        <button class="btn" id="salva" disabled>Salva</button>
       </div>
-      <input id="ctelefono" placeholder="Telefono" inputmode="tel" autocomplete="off">
     </div>
 
-    <label>Trattamento</label>
-    <select id="trattamento">
-      ${anagrafiche.trattamenti.map((t) =>
-        `<option value="${esc(t.id)}">${esc(t.nome)} · ${t.durata} min</option>`).join("")}
-    </select>
+    <div class="tipi">
+      <button class="tipo attivo" data-tipo="appuntamento">
+        <strong>Appuntamento</strong>
+        <span>Fissa un appuntamento con un cliente</span>
+      </button>
+      <button class="tipo" data-tipo="blocco">
+        <strong>Blocco</strong>
+        <span>Chiudi uno spazio nella tua agenda</span>
+      </button>
+    </div>
+
+    <div id="errore"></div>
 
     <div class="riga">
       <div>
-        <label>Cabina</label>
-        <select id="cabina">
-          ${anagrafiche.cabine.map((c) =>
-            `<option value="${esc(c.id)}" ${c.id === cabinaId ? "selected" : ""}>${esc(c.nome)}</option>`).join("")}
-        </select>
+        <label>Data</label>
+        <input id="data" type="date" value="${esc(dataIso)}">
       </div>
       <div>
         <label>Ora</label>
@@ -781,32 +794,118 @@ function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
       </div>
     </div>
 
-    <label>Operatrice <span class="opz">(facoltativa)</span></label>
-    <select id="operatore">
-      <option value="">—</option>
-      ${anagrafiche.operatori.map((o) =>
-        `<option value="${esc(o.id)}" ${o.id === operatoreId ? "selected" : ""}>${esc(o.nome)}</option>`).join("")}
+    <div class="solo-appuntamento">
+      <label>Modalità</label>
+      <select id="modalita">
+        <option value="sede">In sede</option>
+        <option value="domicilio">A domicilio</option>
+      </select>
+
+      <label>Cliente</label>
+      <input id="qcliente" type="text" placeholder="Cerca per nome o telefono" autocomplete="off">
+      <div id="risultati" class="risultati"></div>
+      <div id="nuovocliente" hidden>
+        <div class="riga">
+          <input id="cnome" placeholder="Nome" autocomplete="off">
+          <input id="ccognome" placeholder="Cognome" autocomplete="off">
+        </div>
+        <input id="ctelefono" placeholder="Telefono" inputmode="tel" autocomplete="off">
+      </div>
+
+      <label>Servizio</label>
+      <select id="trattamento">
+        ${anagrafiche.trattamenti.map((t) =>
+          `<option value="${esc(t.id)}" data-durata="${t.durata}">${esc(t.nome)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="solo-blocco" hidden>
+      <label>Motivo</label>
+      <input id="titolo" type="text" placeholder="Pausa pranzo, riunione, ferie…" autocomplete="off">
+    </div>
+
+    <label>Durata</label>
+    <select id="durata">
+      ${DURATE.map((d) => `<option value="${d}">${d} minuti</option>`).join("")}
     </select>
 
+    <div class="riga">
+      <div>
+        <label>Cabina</label>
+        <select id="cabina">
+          <option value="">—</option>
+          ${anagrafiche.cabine.map((c) =>
+            `<option value="${esc(c.id)}" ${c.id === cabinaId ? "selected" : ""}>${esc(c.nome)}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label>Membro team</label>
+        <select id="operatore">
+          <option value="">—</option>
+          ${anagrafiche.operatori.map((o) =>
+            `<option value="${esc(o.id)}" ${o.id === operatoreId ? "selected" : ""}>${esc(o.nome)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
     <label>Note <span class="opz">(facoltative)</span></label>
-    <textarea id="note" rows="2"></textarea>
+    <textarea id="note" rows="2"></textarea>`;
 
-    <div class="azioni">
-      <button class="btn btn-chiaro" id="annulla">Annulla</button>
-      <button class="btn" id="salva">Salva</button>
-    </div>`;
+  const el = (id) => box.querySelector("#" + id);
+  const err = el("errore");
+  const salva = el("salva");
+  const trattamento = el("trattamento");
+  const durata = el("durata");
 
-  const q = box.querySelector("#qcliente");
-  const risultati = box.querySelector("#risultati");
-  const nuovo = box.querySelector("#nuovocliente");
+  // La durata segue il servizio, ma resta modificabile: un trattamento sulla
+  // stessa cliente puo' richiedere piu' tempo del listino.
+  const durataDaServizio = () => {
+    const d = Number(trattamento.selectedOptions[0]?.dataset.durata || 60);
+    const vicina = [...durata.options].find((o) => Number(o.value) >= d) || durata.options[0];
+    durata.value = vicina.value;
+  };
+  durataDaServizio();
+  trattamento.onchange = () => { durataDaServizio(); verifica(); };
+
+  // Il tasto Salva resta spento finche' non c'e' abbastanza per salvare:
+  // meglio un tasto che non si preme di un errore dopo averlo premuto.
+  function verifica() {
+    const ok = tipo === "appuntamento"
+      ? Boolean(clienteScelto || el("cnome").value.trim()) && Boolean(el("cabina").value)
+      : Boolean(el("titolo").value.trim()) && Boolean(el("cabina").value || el("operatore").value);
+    salva.disabled = !ok;
+  }
+
+  box.querySelectorAll(".tipo").forEach((b) => {
+    b.onclick = () => {
+      tipo = b.dataset.tipo;
+      box.querySelectorAll(".tipo").forEach((x) => x.classList.toggle("attivo", x === b));
+      box.querySelector(".solo-appuntamento").hidden = tipo === "blocco";
+      box.querySelector(".solo-blocco").hidden = tipo !== "blocco";
+      box.querySelector(".scheda-testa h2").textContent =
+        tipo === "blocco" ? "Nuovo blocco" : "Nuovo appuntamento";
+      verifica();
+    };
+  });
+
+  ["titolo", "cabina", "operatore", "cnome"].forEach((id) => {
+    const e = el(id);
+    if (e) e.addEventListener("input", verifica), e.addEventListener("change", verifica);
+  });
+
+  // ------------------------------------------------------- ricerca cliente
+  const q = el("qcliente");
+  const risultati = el("risultati");
+  const nuovo = el("nuovocliente");
 
   const mostraNuovo = (testo) => {
     clienteScelto = null;
     nuovo.hidden = false;
     risultati.innerHTML = "";
     const pezzi = testo.trim().split(/\s+/);
-    box.querySelector("#cnome").value = pezzi[0] || "";
-    box.querySelector("#ccognome").value = pezzi.slice(1).join(" ");
+    el("cnome").value = pezzi[0] || "";
+    el("ccognome").value = pezzi.slice(1).join(" ");
+    verifica();
   };
 
   let attesa;
@@ -815,17 +914,22 @@ function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
     const testo = q.value.trim();
     clienteScelto = null;
     nuovo.hidden = true;
+    verifica();
     if (testo.length < 2) { risultati.innerHTML = ""; return; }
 
     attesa = setTimeout(async () => {
-      const { data: trovati } = await sb.rpc("crm_cerca_cliente",
+      const { data: trovati, error } = await sb.rpc("crm_cerca_cliente",
         { p_centro: centro.id, p_query: testo });
+      if (error) {
+        risultati.innerHTML = `<div class="ris vuoto">La ricerca non ha funzionato.</div>`;
+        return;
+      }
       risultati.innerHTML = (trovati || []).map((c) => `
         <button class="ris" data-id="${esc(c.id)}">
           ${esc(c.nome)} ${esc(c.cognome || "")}
           ${c.telefono ? `<span class="tel">${esc(c.telefono)}</span>` : ""}
         </button>`).join("") +
-        `<button class="ris nuovo">+ Nuovo cliente “${esc(testo)}”</button>`;
+        `<button class="ris nuovo">+ Nuovo cliente \u201c${esc(testo)}\u201d</button>`;
 
       risultati.querySelectorAll(".ris").forEach((b) => {
         b.onclick = () => {
@@ -834,38 +938,31 @@ function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
           q.value = b.textContent.trim().split("\n")[0].trim();
           risultati.innerHTML = "";
           nuovo.hidden = true;
+          verifica();
         };
       });
     }, 250);
   };
 
-  box.querySelector("#annulla").onclick = chiudi;
+  el("annulla").onclick = chiudi;
 
-  box.querySelector("#salva").onclick = async (e) => {
-    const btn = e.target;
-    const err = box.querySelector("#errore");
+  salva.onclick = async () => {
     err.innerHTML = "";
-    btn.disabled = true;
-    btn.textContent = "Salvo…";
+    salva.disabled = true;
+    salva.textContent = "Salvo\u2026";
 
     let clienteId = clienteScelto;
 
-    // Cliente nuovo: prima si crea l'anagrafica, poi l'appuntamento.
-    if (!clienteId) {
-      const nome = box.querySelector("#cnome").value.trim();
-      if (!nome) {
-        err.innerHTML = erroreBox("Scegli un cliente dall'elenco oppure creane uno nuovo.");
-        btn.disabled = false; btn.textContent = "Salva";
-        return;
-      }
+    if (tipo === "appuntamento" && !clienteId) {
+      const nome = el("cnome").value.trim();
       const { data: cli } = await sb.rpc("crm_salva_cliente", {
         p_centro: centro.id, p_nome: nome,
-        p_cognome: box.querySelector("#ccognome").value.trim() || null,
-        p_telefono: box.querySelector("#ctelefono").value.trim() || null,
+        p_cognome: el("ccognome").value.trim() || null,
+        p_telefono: el("ctelefono").value.trim() || null,
       });
       if (!cli?.ok) {
         err.innerHTML = erroreBox(cli?.errore || "Non sono riuscito a salvare il cliente.");
-        btn.disabled = false; btn.textContent = "Salva";
+        salva.disabled = false; salva.textContent = "Salva";
         return;
       }
       clienteId = cli.id;
@@ -873,33 +970,74 @@ function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
 
     const { data, error } = await sb.rpc("crm_salva_appuntamento_locale", {
       p_centro: centro.id,
-      p_cliente: clienteId,
-      p_trattamento: box.querySelector("#trattamento").value,
-      p_cabina: box.querySelector("#cabina").value,
-      p_giorno: dataIso,
-      p_ora: box.querySelector("#ora").value,
-      p_operatore: box.querySelector("#operatore").value || null,
-      p_note: box.querySelector("#note").value.trim() || null,
+      p_cliente: tipo === "blocco" ? null : clienteId,
+      p_trattamento: tipo === "blocco" ? null : trattamento.value,
+      p_cabina: el("cabina").value || null,
+      p_giorno: el("data").value,
+      p_ora: el("ora").value,
+      p_operatore: el("operatore").value || null,
+      p_durata: Number(durata.value),
+      p_note: el("note").value.trim() || null,
+      p_tipo: tipo,
+      p_titolo: tipo === "blocco" ? el("titolo").value.trim() : null,
+      p_modalita: el("modalita").value,
     });
 
     if (error || !data?.ok) {
-      // Qui compare "Cabina 1 è già occupata dalle 10:00 alle 11:00".
       err.innerHTML = erroreBox(data?.errore || error?.message || "Non sono riuscito a salvare.");
-      btn.disabled = false;
-      btn.textContent = "Salva";
+      salva.disabled = false;
+      salva.textContent = "Salva";
       return;
     }
 
+    // Se si salva su un giorno diverso da quello mostrato, ci si sposta li':
+    // altrimenti l'appuntamento sparirebbe e sembrerebbe non salvato.
+    if (el("data").value !== giorno) giorno = el("data").value;
     chiudi();
     caricaAgenda();
   };
 
-  q.focus();
+  verifica();
+  q.focus({ preventScroll: true });
 }
 
 function mostraScheda(a) {
   if (!a) return;
   const { box, chiudi } = pannello();
+
+  if (a.tipo === "blocco") {
+    box.innerHTML = `
+      <h2>${esc(a.titolo || "Spazio bloccato")}</h2>
+      <p class="quando">${a.giorno ? esc(fmt(a.giorno, { weekday: "long", day: "numeric", month: "long" })) + " \u00b7 " : ""}${esc(a.inizio)}\u2013${esc(a.fine)}</p>
+      <div id="errore"></div>
+      <dl>
+        ${a.cabina ? `<dt>Cabina</dt><dd>${esc(a.cabina)}</dd>` : ""}
+        ${a.operatore ? `<dt>Operatrice</dt><dd>${esc(a.operatore)}</dd>` : ""}
+        <dt>Durata</dt><dd>${a.durata} minuti</dd>
+        ${a.note ? `<dt>Note</dt><dd>${esc(a.note)}</dd>` : ""}
+      </dl>
+      <div class="azioni">
+        <button class="btn btn-chiaro" id="sposta">Sposta</button>
+        <button class="btn btn-chiaro pericolo" id="annullaApp">Rimuovi blocco</button>
+      </div>
+      <button class="btn btn-wide chiudi">Chiudi</button>`;
+
+    const errB = box.querySelector("#errore");
+    box.querySelector("#sposta").onclick = () => {
+      daSpostare = a;
+      if (vista !== "giorno") { vista = "giorno"; if (a.giorno) giorno = a.giorno; }
+      chiudi();
+      caricaAgenda();
+    };
+    box.querySelector("#annullaApp").onclick = async () => {
+      const { data } = await sb.rpc("crm_cambia_stato", { p_id: a.id, p_stato: "annullato" });
+      if (!data?.ok) { errB.innerHTML = erroreBox(data?.errore || "Non riesco a rimuoverlo."); return; }
+      chiudi();
+      caricaAgenda();
+    };
+    box.querySelector(".chiudi").onclick = chiudi;
+    return;
+  }
 
   box.innerHTML = `
     <h2>${esc(a.cliente)}</h2>
