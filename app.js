@@ -8,45 +8,56 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = document.getElementById("app");
 const topbar = document.getElementById("topbar");
 
+const SLOT_H = 46;                 // deve combaciare con --slot-h nel CSS
+const PX_MIN = SLOT_H / 30;
+
 let session = null;
-let centro = null;      // il centro attualmente aperto
-let giorno = oggi();    // data mostrata, formato AAAA-MM-GG
-let anagrafiche = null; // cabine, operatrici, trattamenti del centro
-let daSpostare = null;  // appuntamento in attesa di una nuova collocazione
+let centro = null;        // il centro attualmente aperto
+let vista = "giorno";     // giorno | settimana | mese
+let giorno = oggi();      // data di riferimento, formato AAAA-MM-GG
+let anagrafiche = null;   // cabine, operatrici, trattamenti del centro
+let daSpostare = null;    // appuntamento in attesa di una nuova collocazione
 
 // ------------------------------------------------------------------ utils
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-function oggi() {
-  // Data locale, non UTC: toISOString() darebbe il giorno sbagliato la sera.
-  const d = new Date();
+// Dichiarate come funzioni e non come costanti: servono gia' alla riga in cui
+// si calcola la data di partenza, che sta piu' in alto di queste righe.
+function iso(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const spostaGiorno = (iso, delta) => {
-  const [a, m, g] = iso.split("-").map(Number);
-  const d = new Date(a, m - 1, g + delta);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Data locale, non UTC: toISOString() darebbe il giorno sbagliato la sera.
+function oggi() { return iso(new Date()); }
+
+const daIso = (s) => { const [a, m, g] = s.split("-").map(Number); return new Date(a, m - 1, g); };
+
+const piuGiorni = (s, n) => { const d = daIso(s); d.setDate(d.getDate() + n); return iso(d); };
+const piuMesi   = (s, n) => { const d = daIso(s); d.setDate(1); d.setMonth(d.getMonth() + n); return iso(d); };
+
+// Lunedi della settimana che contiene la data: in Italia la settimana
+// lavorativa comincia da li', non dalla domenica.
+const lunedi = (s) => {
+  const d = daIso(s);
+  const scarto = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - scarto);
+  return iso(d);
 };
 
-const etichettaGiorno = (iso) => {
-  const [a, m, g] = iso.split("-").map(Number);
-  return new Date(a, m - 1, g).toLocaleDateString("it-IT",
-    { weekday: "long", day: "numeric", month: "long" });
-};
+const primoDelMese = (s) => { const d = daIso(s); d.setDate(1); return iso(d); };
 
-const minuti = (hhmm) => {
-  const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
-};
+const fmt = (s, opz) => daIso(s).toLocaleDateString("it-IT", opz);
+const minuti = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+const oraDaMinuti = (m) =>
+  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 // Colore di sfondo tenue a partire dal colore pieno del trattamento.
-const tenue = (hex) => {
+const tenue = (hex, alpha = .16) => {
   const h = (hex || "#6B4E9B").replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .16)`;
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };
 
 // ------------------------------------------------------------------ login
@@ -86,150 +97,373 @@ function renderLogin(messaggio = "") {
   });
 }
 
-// ----------------------------------------------------------------- agenda
+// ------------------------------------------------------------ caricamento
 
 async function caricaAgenda() {
-  const { data, error } = await sb.rpc("crm_agenda_giorno", {
-    p_centro: centro.id,
-    p_giorno: giorno,
-  });
-
-  if (error) {
-    app.innerHTML = `<div class="notice" style="margin:20px">Errore: ${esc(error.message)}</div>`;
-    return;
-  }
-  if (!data?.ok) {
-    app.innerHTML = `<div class="notice" style="margin:20px">${esc(data?.errore || "Agenda non disponibile")}</div>`;
-    return;
-  }
-  disegna(data);
+  if (vista === "giorno")    return caricaGiorno();
+  if (vista === "settimana") return caricaSettimana();
+  return caricaMese();
 }
 
-function disegna(dati) {
+const erroreSchermo = (msg) =>
+  app.innerHTML = `${barra()}<div class="notice" style="margin:20px">${esc(msg)}</div>`;
+
+async function caricaGiorno() {
+  const { data, error } = await sb.rpc("crm_agenda_giorno",
+    { p_centro: centro.id, p_giorno: giorno });
+  if (error) return erroreSchermo(error.message);
+  if (!data?.ok) return erroreSchermo(data?.errore || "Agenda non disponibile");
+  disegnaGiorno(data);
+}
+
+async function caricaSettimana() {
+  const da = lunedi(giorno);
+  const { data, error } = await sb.rpc("crm_agenda_periodo",
+    { p_centro: centro.id, p_da: da, p_a: piuGiorni(da, 6) });
+  if (error) return erroreSchermo(error.message);
+  if (!data?.ok) return erroreSchermo(data?.errore || "Agenda non disponibile");
+  disegnaSettimana(data, da);
+}
+
+async function caricaMese() {
+  const { data, error } = await sb.rpc("crm_agenda_mese",
+    { p_centro: centro.id, p_mese: primoDelMese(giorno) });
+  if (error) return erroreSchermo(error.message);
+  if (!data?.ok) return erroreSchermo(data?.errore || "Agenda non disponibile");
+  disegnaMese(data);
+}
+
+// -------------------------------------------------------- barra superiore
+
+function etichettaPeriodo() {
+  if (vista === "giorno")
+    return fmt(giorno, { weekday: "long", day: "numeric", month: "long" });
+
+  if (vista === "settimana") {
+    const da = lunedi(giorno), a = piuGiorni(da, 6);
+    const stessoMese = daIso(da).getMonth() === daIso(a).getMonth();
+    return stessoMese
+      ? `${fmt(da, { day: "numeric" })} – ${fmt(a, { day: "numeric", month: "long" })}`
+      : `${fmt(da, { day: "numeric", month: "short" })} – ${fmt(a, { day: "numeric", month: "short" })}`;
+  }
+  return fmt(giorno, { month: "long", year: "numeric" });
+}
+
+function barra(conteggio = "") {
+  return `
+    <div class="giorno-bar">
+      <button class="nav-btn" id="prec" title="Indietro">‹</button>
+      <button class="nav-btn" id="succ" title="Avanti">›</button>
+      <button class="oggi-btn" id="oggi">Oggi</button>
+      <h1>${esc(etichettaPeriodo())}</h1>
+      <span class="conteggio">${esc(conteggio)}</span>
+      <div class="spazio"></div>
+      <div class="viste">
+        ${["giorno", "settimana", "mese"].map((v) =>
+          `<button class="vista ${vista === v ? "attiva" : ""}" data-vista="${v}">${
+            v[0].toUpperCase() + v.slice(1)}</button>`).join("")}
+      </div>
+    </div>`;
+}
+
+function agganciaBarra() {
+  const passo = { giorno: 1, settimana: 7, mese: 0 };
+  document.getElementById("prec").onclick = () => {
+    giorno = vista === "mese" ? piuMesi(giorno, -1) : piuGiorni(giorno, -passo[vista]);
+    caricaAgenda();
+  };
+  document.getElementById("succ").onclick = () => {
+    giorno = vista === "mese" ? piuMesi(giorno, 1) : piuGiorni(giorno, passo[vista]);
+    caricaAgenda();
+  };
+  document.getElementById("oggi").onclick = () => { giorno = oggi(); caricaAgenda(); };
+
+  document.querySelectorAll(".vista").forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.vista === vista) return;
+      vista = b.dataset.vista;
+      daSpostare = null;
+      document.body.classList.remove("in-spostamento");
+      caricaAgenda();
+    };
+  });
+}
+
+// Toglie la barra dello spostamento: vive fuori dalla griglia, quindi
+// ridisegnare non la fa sparire da sola.
+function gestisciBarraSpostamento() {
+  document.querySelector(".barra-spostamento")?.remove();
+  if (!daSpostare) { document.body.classList.remove("in-spostamento"); return; }
+
+  document.body.classList.add("in-spostamento");
+  const b = document.createElement("div");
+  b.className = "barra-spostamento";
+  b.innerHTML = `Tocca dove spostare <strong>${esc(daSpostare.cliente)}</strong>
+                 <button class="annulla-spost">Annulla</button>`;
+  b.querySelector(".annulla-spost").onclick = () => {
+    daSpostare = null;
+    caricaAgenda();
+  };
+  document.body.appendChild(b);
+}
+
+// ------------------------------------------------------------ vista giorno
+
+function disegnaGiorno(dati) {
   const apertura = minuti(dati.centro.apertura);
   const chiusura = minuti(dati.centro.chiusura);
-  const durataGiornata = chiusura - apertura;
-  const slotH = 46;                     // deve combaciare con --slot-h nel CSS
-  const pxPerMinuto = slotH / 30;
-  const altezza = durataGiornata * pxPerMinuto;
+  const altezza = (chiusura - apertura) * PX_MIN;
 
-  // Colonna delle ore, una etichetta ogni mezz'ora.
   let ore = "";
   for (let m = apertura; m < chiusura; m += 30) {
-    const h = String(Math.floor(m / 60)).padStart(2, "0");
-    const mm = String(m % 60).padStart(2, "0");
-    ore += `<div class="ora ${mm === "30" ? "mezza" : ""}">${h}:${mm}</div>`;
+    ore += `<div class="ora ${m % 60 === 30 ? "mezza" : ""}">${oraDaMinuti(m)}</div>`;
   }
 
   const perCabina = new Map(dati.cabine.map((c) => [c.id, []]));
-  for (const a of dati.appuntamenti) {
-    if (perCabina.has(a.cabina_id)) perCabina.get(a.cabina_id).push(a);
-  }
+  for (const a of dati.appuntamenti) perCabina.get(a.cabina_id)?.push(a);
 
   const colonne = dati.cabine.map((cab) => {
-    const blocchi = (perCabina.get(cab.id) || []).map((a) => {
-      const top = (minuti(a.inizio) - apertura) * pxPerMinuto;
-      const h = Math.max(a.durata * pxPerMinuto - 2, 20);
-      const stretto = h < 44;
-      return `
-        <div class="appuntamento ${esc(a.stato)}" data-id="${esc(a.id)}"
-             style="top:${top}px;height:${h}px;background:${tenue(a.colore)};border-left-color:${esc(a.colore)}">
-          <div class="h">${esc(a.inizio)}<span class="c"> · ${esc(a.cliente)}</span></div>
-          ${stretto ? "" : `<div class="t">${esc(a.trattamento)}${a.operatore ? " · " + esc(a.operatore) : ""}</div>`}
-        </div>`;
-    }).join("");
-
+    const blocchi = (perCabina.get(cab.id) || []).map((a) =>
+      bloccoHtml(a, (minuti(a.inizio) - apertura) * PX_MIN, a.durata * PX_MIN, 0, 1)).join("");
     return `<div class="colonna" style="height:${altezza}px">${blocchi}</div>`;
   }).join("");
 
-  const teste = dati.cabine.map((c) => `<div class="testa">${esc(c.nome)}</div>`).join("");
-  const nColonne = dati.cabine.length;
-  // Intestazioni e griglia sono due elementi distinti: perche' le colonne
-  // restino allineate devono dichiarare le stesse larghezze.
-  const colonneCss = `grid-template-columns: 62px repeat(${nColonne}, 190px)`;
+  const n = dati.cabine.length;
+  const css = `grid-template-columns: 62px repeat(${n}, minmax(170px, 1fr))`;
+  const q = dati.appuntamenti.length;
 
   app.innerHTML = `
-    <div class="giorno-bar">
-      <button class="nav-btn" id="prec" title="Giorno precedente">‹</button>
-      <button class="nav-btn" id="succ" title="Giorno successivo">›</button>
-      <button class="oggi-btn" id="oggi">Oggi</button>
-      <h1>${esc(etichettaGiorno(giorno))}</h1>
-      <span class="conteggio">${dati.appuntamenti.length} ${dati.appuntamenti.length === 1 ? "appuntamento" : "appuntamenti"}</span>
-    </div>
-
+    ${barra(`${q} ${q === 1 ? "appuntamento" : "appuntamenti"}`)}
     <div class="griglia-wrap">
-      ${nColonne === 0
+      ${n === 0
         ? `<div class="vuoto">Nessuna cabina configurata per questo centro.</div>`
-        : `<div class="intestazioni" style="${colonneCss}">
+        : `<div class="intestazioni" style="${css}">
              <div class="testa ore"></div>
-             ${teste}
+             ${dati.cabine.map((c) => `<div class="testa">${esc(c.nome)}</div>`).join("")}
            </div>
-           <div class="griglia" style="${colonneCss}">
+           <div class="griglia" style="${css}">
              <div class="colonna-ore">${ore}</div>
              ${colonne}
            </div>`}
     </div>`;
 
-  document.getElementById("prec").onclick = () => { giorno = spostaGiorno(giorno, -1); caricaAgenda(); };
-  document.getElementById("succ").onclick = () => { giorno = spostaGiorno(giorno, 1); caricaAgenda(); };
-  document.getElementById("oggi").onclick = () => { giorno = oggi(); caricaAgenda(); };
+  agganciaBarra();
+  agganciaBlocchi(dati.appuntamenti);
 
-  app.querySelectorAll(".appuntamento").forEach((el) => {
-    el.onclick = (e) => {
-      e.stopPropagation();   // altrimenti scatta anche il click sulla colonna
-      if (daSpostare) return;
-      mostraScheda(dati.appuntamenti.find((a) => a.id === el.dataset.id));
-    };
-  });
-
-  // Click su uno spazio libero: si ricava l'ora dalla posizione verticale.
   app.querySelectorAll(".colonna").forEach((col, i) => {
     col.onclick = (e) => {
-      // Il bordo della colonna cade spesso a meta' pixel mentre la posizione
-      // del click e' intera: senza tolleranza si perde mezzo pixel e il click
-      // sulla riga delle 10:00 finirebbe per proporre le 09:45.
-      const y = Math.max(0, e.clientY - col.getBoundingClientRect().top + 1);
-
-      // Tagli da 15 minuti: la griglia mostra le mezz'ore, ma i centri
-      // lavorano spesso su quarti d'ora.
-      const grezzo = apertura + Math.floor(y / pxPerMinuto / 15) * 15;
-      const m = Math.min(Math.max(grezzo, apertura), chiusura - 15);
-      const ora = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-      const cabinaId = dati.cabine[i].id;
-
-      if (daSpostare) return concludiSpostamento(cabinaId, ora);
-      apriNuovo(cabinaId, ora);
+      const ora = oraDalClick(e, col, apertura, chiusura);
+      if (daSpostare) return concludiSpostamento(dati.cabine[i].id, ora, giorno);
+      apriNuovo(dati.cabine[i].id, ora, giorno);
     };
   });
 
-  // La barra vive fuori dalla griglia, quindi non sparisce da sola quando si
-  // ridisegna: va tolta a ogni giro e rimessa solo se serve ancora.
-  document.querySelector(".barra-spostamento")?.remove();
-
-  if (daSpostare) {
-    document.body.classList.add("in-spostamento");
-    const barra = document.createElement("div");
-    barra.className = "barra-spostamento";
-    barra.innerHTML = `Tocca dove spostare <strong>${esc(daSpostare.cliente)}</strong>
-                       <button class="annulla-spost">Annulla</button>`;
-    barra.querySelector(".annulla-spost").onclick = () => {
-      daSpostare = null;
-      document.body.classList.remove("in-spostamento");
-      caricaAgenda();
-    };
-    document.body.appendChild(barra);
-  }
+  gestisciBarraSpostamento();
 }
 
-const STATI = {
-  prenotato: "Prenotato",
-  confermato: "Confermato",
-  presentato: "Presentato",
-  non_presentato: "Non presentato",
-  annullato: "Annullato",
-};
+// --------------------------------------------------------- vista settimana
 
-// Pannello riutilizzabile: restituisce l'elemento interno da riempire.
+function disegnaSettimana(dati, da) {
+  const apertura = minuti(dati.centro.apertura);
+  const chiusura = minuti(dati.centro.chiusura);
+  const altezza = (chiusura - apertura) * PX_MIN;
+  const giorni = Array.from({ length: 7 }, (_, i) => piuGiorni(da, i));
+
+  let ore = "";
+  for (let m = apertura; m < chiusura; m += 30) {
+    ore += `<div class="ora ${m % 60 === 30 ? "mezza" : ""}">${oraDaMinuti(m)}</div>`;
+  }
+
+  const perGiorno = new Map(giorni.map((g) => [g, []]));
+  for (const a of dati.appuntamenti) perGiorno.get(a.giorno)?.push(a);
+
+  const colonne = giorni.map((g) => {
+    const lista = (perGiorno.get(g) || []).sort((x, y) => minuti(x.inizio) - minuti(y.inizio));
+    assegnaCorsie(lista);
+    const blocchi = lista.map((a) =>
+      bloccoHtml(a, (minuti(a.inizio) - apertura) * PX_MIN, a.durata * PX_MIN,
+                 a._corsia, a._corsie, true)).join("");
+    return `<div class="colonna ${g === oggi() ? "oggi" : ""}" data-giorno="${g}"
+                 style="height:${altezza}px">${blocchi}</div>`;
+  }).join("");
+
+  const teste = giorni.map((g) => `
+    <div class="testa ${g === oggi() ? "oggi" : ""}">
+      <span class="gg">${fmt(g, { weekday: "short" })}</span>
+      <span class="nn">${daIso(g).getDate()}</span>
+    </div>`).join("");
+
+  const css = `grid-template-columns: 62px repeat(7, minmax(120px, 1fr))`;
+  const q = dati.appuntamenti.length;
+
+  app.innerHTML = `
+    ${barra(`${q} ${q === 1 ? "appuntamento" : "appuntamenti"}`)}
+    <div class="griglia-wrap">
+      <div class="intestazioni" style="${css}">
+        <div class="testa ore"></div>
+        ${teste}
+      </div>
+      <div class="griglia" style="${css}">
+        <div class="colonna-ore">${ore}</div>
+        ${colonne}
+      </div>
+    </div>`;
+
+  agganciaBarra();
+  agganciaBlocchi(dati.appuntamenti);
+
+  // Nella settimana la cabina non e' data dalla colonna: si apre il pannello
+  // con la prima cabina, e chi prenota la cambia se serve.
+  app.querySelectorAll(".colonna").forEach((col) => {
+    col.onclick = (e) => {
+      const ora = oraDalClick(e, col, apertura, chiusura);
+      const g = col.dataset.giorno;
+      if (daSpostare) return concludiSpostamento(daSpostare.cabina_id, ora, g);
+      apriNuovo(anagrafiche.cabine[0]?.id, ora, g);
+    };
+  });
+
+  gestisciBarraSpostamento();
+}
+
+// Quando piu' appuntamenti si accavallano nello stesso giorno, si dividono la
+// larghezza della colonna invece di coprirsi a vicenda.
+function assegnaCorsie(lista) {
+  let gruppo = [], finePiuAvanti = -1;
+
+  const chiudi = () => {
+    if (!gruppo.length) return;
+    const corsie = [];
+    for (const a of gruppo) {
+      const ini = minuti(a.inizio), fin = ini + a.durata;
+      let i = corsie.findIndex((f) => f <= ini);
+      if (i === -1) { corsie.push(fin); i = corsie.length - 1; } else corsie[i] = fin;
+      a._corsia = i;
+    }
+    for (const a of gruppo) a._corsie = corsie.length;
+    gruppo = [];
+  };
+
+  for (const a of lista) {
+    const ini = minuti(a.inizio);
+    if (gruppo.length && ini >= finePiuAvanti) { chiudi(); finePiuAvanti = -1; }
+    gruppo.push(a);
+    finePiuAvanti = Math.max(finePiuAvanti, ini + a.durata);
+  }
+  chiudi();
+}
+
+// ------------------------------------------------------------- vista mese
+
+function disegnaMese(dati) {
+  const primo = primoDelMese(giorno);
+  const inizioGriglia = lunedi(primo);
+  const meseCorrente = daIso(primo).getMonth();
+  const celle = [];
+
+  for (let i = 0; i < 42; i++) {
+    const g = piuGiorni(inizioGriglia, i);
+    const d = daIso(g);
+    if (i >= 35 && d.getMonth() !== meseCorrente) break;   // sesta riga solo se serve
+
+    const info = dati.giorni[g];
+    const fuori = d.getMonth() !== meseCorrente;
+    const ore = info ? Math.round(info.minuti / 6) / 10 : 0;
+
+    celle.push(`
+      <button class="cella ${fuori ? "fuori" : ""} ${g === oggi() ? "oggi" : ""}"
+              data-giorno="${g}" ${info ? "" : "data-vuoto=1"}>
+        <span class="num">${d.getDate()}</span>
+        ${info ? `
+          <span class="tot">${info.totale}</span>
+          <span class="ore">${ore} h</span>
+          ${info.da_confermare > 0
+            ? `<span class="pallino" title="${info.da_confermare} da confermare"></span>` : ""}
+        ` : ""}
+      </button>`);
+  }
+
+  const totale = Object.values(dati.giorni).reduce((s, d) => s + d.totale, 0);
+
+  app.innerHTML = `
+    ${barra(`${totale} nel mese`)}
+    <div class="mese-wrap">
+      <div class="mese-teste">
+        ${["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
+          .map((g) => `<div>${g}</div>`).join("")}
+      </div>
+      <div class="mese">${celle.join("")}</div>
+      <p class="legenda">Tocca un giorno per aprirlo. Il pallino segnala gli appuntamenti
+         ancora da confermare.</p>
+    </div>`;
+
+  agganciaBarra();
+
+  app.querySelectorAll(".cella").forEach((c) => {
+    c.onclick = () => { giorno = c.dataset.giorno; vista = "giorno"; caricaAgenda(); };
+  });
+}
+
+// -------------------------------------------------------- pezzi condivisi
+
+function bloccoHtml(a, top, altezza, corsia, corsie, compatto = false) {
+  const h = Math.max(altezza - 2, 20);
+  const largh = 100 / corsie;
+  const stile = `top:${top}px;height:${h}px;left:calc(${corsia * largh}% + 3px);` +
+                `width:calc(${largh}% - 6px);` +
+                `background:${tenue(a.colore)};border-left-color:${esc(a.colore)}`;
+
+  // Nella settimana le colonne sono strette e si dividono ulteriormente quando
+  // gli appuntamenti si accavallano: su una riga sola il nome sparirebbe dietro
+  // i puntini. Meglio ora sopra e cliente sotto.
+  if (compatto) {
+    // Sotto i 40 pixel non ci stanno due righe: si tiene il nome e si lascia
+    // cadere l'ora, che la posizione nella griglia gia' racconta.
+    if (h < 40) {
+      return `
+        <div class="appuntamento compatto minimo ${esc(a.stato)}" data-id="${esc(a.id)}" style="${stile}">
+          <div class="c">${esc(a.cliente)}</div>
+        </div>`;
+    }
+    return `
+      <div class="appuntamento compatto ${esc(a.stato)}" data-id="${esc(a.id)}" style="${stile}">
+        <div class="h">${esc(a.inizio)}</div>
+        <div class="c">${esc(a.cliente)}</div>
+        ${h >= 66 ? `<div class="t">${esc(a.trattamento)}</div>` : ""}
+      </div>`;
+  }
+
+  return `
+    <div class="appuntamento ${esc(a.stato)}" data-id="${esc(a.id)}" style="${stile}">
+      <div class="h">${esc(a.inizio)}<span class="c"> · ${esc(a.cliente)}</span></div>
+      ${h < 44 ? "" : `<div class="t">${esc(a.trattamento)}${
+        a.operatore ? " · " + esc(a.operatore) : ""}</div>`}
+    </div>`;
+}
+
+function agganciaBlocchi(lista) {
+  app.querySelectorAll(".appuntamento").forEach((el) => {
+    el.onclick = (e) => {
+      e.stopPropagation();          // altrimenti scatta anche il click sulla colonna
+      if (daSpostare) return;
+      mostraScheda(lista.find((a) => a.id === el.dataset.id));
+    };
+  });
+}
+
+function oraDalClick(e, col, apertura, chiusura) {
+  // Il bordo della colonna cade spesso a meta' pixel mentre la posizione del
+  // click e' intera: senza tolleranza si perde mezzo pixel e il click sulla
+  // riga delle 10:00 finirebbe per proporre le 09:45.
+  const y = Math.max(0, e.clientY - col.getBoundingClientRect().top + 1);
+  // Tagli da 15 minuti: la griglia mostra le mezz'ore, ma i centri lavorano
+  // spesso su quarti d'ora.
+  const grezzo = apertura + Math.floor(y / PX_MIN / 15) * 15;
+  return oraDaMinuti(Math.min(Math.max(grezzo, apertura), chiusura - 15));
+}
+
+// ------------------------------------------------------------- pannelli
+
 function pannello() {
   const velo = document.createElement("div");
   velo.className = "velo";
@@ -241,15 +475,30 @@ function pannello() {
 
 const erroreBox = (msg) => `<div class="notice">${esc(msg)}</div>`;
 
-// ----------------------------------------------------- nuovo appuntamento
+const STATI = {
+  prenotato: "Prenotato",
+  confermato: "Confermato",
+  presentato: "Presentato",
+  non_presentato: "Non presentato",
+  annullato: "Annullato",
+};
 
-function apriNuovo(cabinaId, ora) {
+function apriNuovo(cabinaId, ora, dataIso) {
+  if (!anagrafiche?.trattamenti?.length) {
+    const { box, chiudi } = pannello();
+    box.innerHTML = `<h2>Manca il listino</h2>
+      <p class="quando">Per prenotare serve almeno un trattamento configurato.</p>
+      <button class="btn btn-wide chiudi">Ho capito</button>`;
+    box.querySelector(".chiudi").onclick = chiudi;
+    return;
+  }
+
   const { box, chiudi } = pannello();
   let clienteScelto = null;
 
   box.innerHTML = `
     <h2>Nuovo appuntamento</h2>
-    <p class="quando">${esc(etichettaGiorno(giorno))} · ore ${esc(ora)}</p>
+    <p class="quando">${esc(fmt(dataIso, { weekday: "long", day: "numeric", month: "long" }))} · ore ${esc(ora)}</p>
     <div id="errore"></div>
 
     <label>Cliente</label>
@@ -266,7 +515,7 @@ function apriNuovo(cabinaId, ora) {
     <label>Trattamento</label>
     <select id="trattamento">
       ${anagrafiche.trattamenti.map((t) =>
-        `<option value="${esc(t.id)}" data-durata="${t.durata}">${esc(t.nome)} · ${t.durata} min</option>`).join("")}
+        `<option value="${esc(t.id)}">${esc(t.nome)} · ${t.durata} min</option>`).join("")}
     </select>
 
     <div class="riga">
@@ -319,8 +568,9 @@ function apriNuovo(cabinaId, ora) {
     if (testo.length < 2) { risultati.innerHTML = ""; return; }
 
     attesa = setTimeout(async () => {
-      const { data } = await sb.rpc("crm_cerca_cliente", { p_centro: centro.id, p_query: testo });
-      risultati.innerHTML = (data || []).map((c) => `
+      const { data: trovati } = await sb.rpc("crm_cerca_cliente",
+        { p_centro: centro.id, p_query: testo });
+      risultati.innerHTML = (trovati || []).map((c) => `
         <button class="ris" data-id="${esc(c.id)}">
           ${esc(c.nome)} ${esc(c.cognome || "")}
           ${c.telefono ? `<span class="tel">${esc(c.telefono)}</span>` : ""}
@@ -376,7 +626,7 @@ function apriNuovo(cabinaId, ora) {
       p_cliente: clienteId,
       p_trattamento: box.querySelector("#trattamento").value,
       p_cabina: box.querySelector("#cabina").value,
-      p_giorno: giorno,
+      p_giorno: dataIso,
       p_ora: box.querySelector("#ora").value,
       p_operatore: box.querySelector("#operatore").value || null,
       p_note: box.querySelector("#note").value.trim() || null,
@@ -397,18 +647,17 @@ function apriNuovo(cabinaId, ora) {
   q.focus();
 }
 
-// ------------------------------------------------------- scheda esistente
-
 function mostraScheda(a) {
   if (!a) return;
   const { box, chiudi } = pannello();
 
   box.innerHTML = `
     <h2>${esc(a.cliente)}</h2>
-    <p class="quando">${esc(a.inizio)}–${esc(a.fine)} · ${esc(a.trattamento)}</p>
+    <p class="quando">${a.giorno ? esc(fmt(a.giorno, { weekday: "long", day: "numeric", month: "long" })) + " · " : ""}${esc(a.inizio)}–${esc(a.fine)} · ${esc(a.trattamento)}</p>
     <div id="errore"></div>
     <dl>
       <dt>Stato</dt><dd>${esc(STATI[a.stato] || a.stato)}</dd>
+      ${a.cabina ? `<dt>Cabina</dt><dd>${esc(a.cabina)}</dd>` : ""}
       ${a.operatore ? `<dt>Operatrice</dt><dd>${esc(a.operatore)}</dd>` : ""}
       ${a.telefono ? `<dt>Telefono</dt><dd><a href="tel:${esc(a.telefono)}">${esc(a.telefono)}</a></dd>` : ""}
       <dt>Durata</dt><dd>${a.durata} minuti</dd>
@@ -440,6 +689,9 @@ function mostraScheda(a) {
 
   box.querySelector("#sposta").onclick = () => {
     daSpostare = a;
+    // Lo spostamento ha senso sulla vista giorno, dove le colonne sono le
+    // cabine: da settimana o mese ci si porta prima sul giorno giusto.
+    if (vista !== "giorno") { vista = "giorno"; if (a.giorno) giorno = a.giorno; }
     chiudi();
     caricaAgenda();
   };
@@ -454,22 +706,19 @@ function mostraScheda(a) {
   box.querySelector(".chiudi").onclick = chiudi;
 }
 
-// ---------------------------------------------------------- spostamento
-
-async function concludiSpostamento(cabinaId, ora) {
+async function concludiSpostamento(cabinaId, ora, data) {
   const a = daSpostare;
-  const { data } = await sb.rpc("crm_sposta_appuntamento_locale", {
-    p_id: a.id, p_giorno: giorno, p_ora: ora, p_cabina: cabinaId,
+  const { data: esito } = await sb.rpc("crm_sposta_appuntamento_locale", {
+    p_id: a.id, p_giorno: data, p_ora: ora, p_cabina: cabinaId,
   });
 
   daSpostare = null;
-  document.body.classList.remove("in-spostamento");
 
-  if (!data?.ok) {
+  if (!esito?.ok) {
     await caricaAgenda();
     const { box, chiudi } = pannello();
     box.innerHTML = `<h2>Non si può spostare lì</h2>
-      ${erroreBox(data?.errore || "Spostamento non riuscito.")}
+      ${erroreBox(esito?.errore || "Spostamento non riuscito.")}
       <button class="btn btn-wide chiudi">Ho capito</button>`;
     box.querySelector(".chiudi").onclick = chiudi;
     return;
@@ -486,26 +735,21 @@ async function boot() {
   if (!session) return renderLogin();
 
   const { data: centri, error } = await sb.rpc("crm_miei_centri");
-  if (error) {
-    app.innerHTML = `<div class="notice" style="margin:20px">Errore: ${esc(error.message)}</div>`;
-    return;
-  }
+  if (error) return erroreSchermo(error.message);
+
+  topbar.hidden = false;
+  document.getElementById("who").textContent = session.user.email;
 
   if (!centri || centri.length === 0) {
-    topbar.hidden = false;
-    document.getElementById("who").textContent = session.user.email;
     app.innerHTML = `<div class="vuoto">Il tuo accesso non è collegato a nessun centro.<br>
                      Scrivi al tuo consulente.</div>`;
     return;
   }
 
   centro = centri[0];   // con piu' centri, in futuro qui va un selettore
-  topbar.hidden = false;
-  document.getElementById("who").textContent = session.user.email;
   document.getElementById("centro").textContent = centro.nome;
 
-  // Cabine, operatrici e trattamenti cambiano di rado: si caricano una volta
-  // e restano pronti per il pannello del nuovo appuntamento.
+  // Cabine, operatrici e trattamenti cambiano di rado: si caricano una volta.
   const { data: anag } = await sb.rpc("crm_anagrafiche", { p_centro: centro.id });
   anagrafiche = anag || { cabine: [], operatori: [], trattamenti: [] };
 
