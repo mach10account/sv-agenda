@@ -14,6 +14,7 @@ const PX_MIN = SLOT_H / 30;
 let session = null;
 let centro = null;        // il centro attualmente aperto
 let vista = "giorno";     // giorno | settimana | mese
+let raggruppa = "operatrici";  // colonne della vista giorno: operatrici | cabine
 let giorno = oggi();      // data di riferimento, formato AAAA-MM-GG
 let anagrafiche = null;   // cabine, operatrici, trattamenti del centro
 let daSpostare = null;    // appuntamento in attesa di una nuova collocazione
@@ -149,34 +150,93 @@ function etichettaPeriodo() {
   return fmt(giorno, { month: "long", year: "numeric" });
 }
 
+// Striscia dei giorni: una settimana indietro e due avanti attorno al giorno
+// scelto. In un centro si ragiona per giorni vicini, non per date astratte.
+function strisciaGiorni() {
+  const celle = [];
+  for (let i = -7; i <= 14; i++) {
+    const g = piuGiorni(giorno, i);
+    const d = daIso(g);
+    const festivo = d.getDay() === 0;
+    celle.push(`
+      <button class="gday ${g === giorno ? "scelto" : ""} ${g === oggi() ? "oggi" : ""}
+                     ${festivo ? "festivo" : ""}" data-giorno="${g}">
+        <span class="gg">${fmt(g, { weekday: "short" })}</span>
+        <span class="nn">${d.getDate()}</span>
+      </button>`);
+  }
+  return `<div class="striscia" id="striscia">${celle.join("")}</div>`;
+}
+
 function barra(conteggio = "") {
+  const soloGiorno = vista === "giorno";
+
   return `
-    <div class="giorno-bar">
-      <button class="nav-btn" id="prec" title="Indietro">‹</button>
-      <button class="nav-btn" id="succ" title="Avanti">›</button>
-      <button class="oggi-btn" id="oggi">Oggi</button>
-      <h1>${esc(etichettaPeriodo())}</h1>
-      <span class="conteggio">${esc(conteggio)}</span>
-      <div class="spazio"></div>
-      <div class="viste">
-        ${["giorno", "settimana", "mese"].map((v) =>
-          `<button class="vista ${vista === v ? "attiva" : ""}" data-vista="${v}">${
-            v[0].toUpperCase() + v.slice(1)}</button>`).join("")}
+    <div class="testata">
+      <div class="riga-alta">
+        <div class="cerca-box">
+          <input id="cerca" type="search" placeholder="Cerca appuntamenti" autocomplete="off">
+          <div id="cerca-esiti" class="cerca-esiti"></div>
+        </div>
+        <div class="viste">
+          ${["giorno", "settimana", "mese"].map((v) =>
+            `<button class="vista ${vista === v ? "attiva" : ""}" data-vista="${v}">${
+              v[0].toUpperCase() + v.slice(1)}</button>`).join("")}
+        </div>
+        <button class="btn aggiungi" id="aggiungi">+ Aggiungi</button>
+      </div>
+
+      <div class="riga-bassa">
+        <div class="titolo">
+          <span class="anno">${daIso(giorno).getFullYear()}</span>
+          <label class="data-grande">
+            ${esc(soloGiorno ? fmt(giorno, { day: "numeric", month: "long" }) : etichettaPeriodo())}
+            <input type="date" id="scegliData" value="${giorno}">
+          </label>
+          ${conteggio ? `<span class="conteggio">${esc(conteggio)}</span>` : ""}
+        </div>
+
+        ${soloGiorno ? strisciaGiorni() : `
+          <div class="nav-periodo">
+            <button class="nav-btn" id="prec" title="Indietro">‹</button>
+            <button class="oggi-btn" id="oggi">Oggi</button>
+            <button class="nav-btn" id="succ" title="Avanti">›</button>
+          </div>`}
+
+        ${soloGiorno ? `
+          <div class="raggruppa">
+            ${[["operatrici", "Operatrici"], ["cabine", "Cabine"]].map(([k, e]) =>
+              `<button class="rg ${raggruppa === k ? "attiva" : ""}" data-rg="${k}">${e}</button>`).join("")}
+          </div>` : ""}
       </div>
     </div>`;
 }
 
 function agganciaBarra() {
-  const passo = { giorno: 1, settimana: 7, mese: 0 };
-  document.getElementById("prec").onclick = () => {
+  const passo = { settimana: 7, mese: 0 };
+
+  document.getElementById("prec")?.addEventListener("click", () => {
     giorno = vista === "mese" ? piuMesi(giorno, -1) : piuGiorni(giorno, -passo[vista]);
     caricaAgenda();
-  };
-  document.getElementById("succ").onclick = () => {
+  });
+  document.getElementById("succ")?.addEventListener("click", () => {
     giorno = vista === "mese" ? piuMesi(giorno, 1) : piuGiorni(giorno, passo[vista]);
     caricaAgenda();
-  };
-  document.getElementById("oggi").onclick = () => { giorno = oggi(); caricaAgenda(); };
+  });
+  document.getElementById("oggi")?.addEventListener("click", () => { giorno = oggi(); caricaAgenda(); });
+
+  // Striscia dei giorni
+  document.querySelectorAll(".gday").forEach((b) => {
+    b.onclick = () => { giorno = b.dataset.giorno; caricaAgenda(); };
+  });
+
+  // Il giorno scelto deve restare visibile anche quando la striscia scorre.
+  const scelto = document.querySelector(".gday.scelto");
+  scelto?.scrollIntoView({ block: "nearest", inline: "center" });
+
+  document.getElementById("scegliData")?.addEventListener("change", (e) => {
+    if (e.target.value) { giorno = e.target.value; caricaAgenda(); }
+  });
 
   document.querySelectorAll(".vista").forEach((b) => {
     b.onclick = () => {
@@ -187,6 +247,82 @@ function agganciaBarra() {
       caricaAgenda();
     };
   });
+
+  document.querySelectorAll(".rg").forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.rg === raggruppa) return;
+      raggruppa = b.dataset.rg;
+      caricaAgenda();
+    };
+  });
+
+  document.getElementById("aggiungi")?.addEventListener("click", () => {
+    // Senza uno slot preciso si parte dall'apertura del centro.
+    apriNuovo(anagrafiche.cabine[0]?.id, "09:00", vista === "giorno" ? giorno : oggi());
+  });
+
+  // Le intestazioni delle colonne devono fermarsi sotto la testata, che cambia
+  // altezza a seconda della vista: la si misura invece di indovinarla.
+  const t = document.querySelector(".testata");
+  if (t) {
+    document.documentElement.style.setProperty(
+      "--testata-h", `${Math.round(t.getBoundingClientRect().height + 54)}px`);
+  }
+
+  agganciaRicerca();
+}
+
+function agganciaRicerca() {
+  const input = document.getElementById("cerca");
+  const esiti = document.getElementById("cerca-esiti");
+  if (!input) return;
+
+  let attesa;
+  input.oninput = () => {
+    clearTimeout(attesa);
+    const q = input.value.trim();
+    if (q.length < 2) { esiti.innerHTML = ""; esiti.classList.remove("aperti"); return; }
+
+    attesa = setTimeout(async () => {
+      const { data, error } = await sb.rpc("crm_cerca_appuntamenti",
+        { p_centro: centro.id, p_query: q });
+
+      esiti.classList.add("aperti");
+
+      // Un guasto del server non deve travestirsi da "nessun risultato":
+      // sono due cose diverse e chi cerca deve poterle distinguere.
+      if (error) {
+        esiti.innerHTML = `<div class="esito vuoto errore">La ricerca non ha funzionato. Riprova.</div>`;
+        return;
+      }
+
+      const lista = data || [];
+      esiti.innerHTML = lista.length
+        ? lista.map((a) => `
+            <button class="esito" data-giorno="${esc(a.giorno)}">
+              <span class="quando">${esc(a.quando)} · ${esc(a.ora)}</span>
+              <span class="chi">${esc(a.cliente)}</span>
+              <span class="cosa">${esc(a.trattamento)}</span>
+            </button>`).join("")
+        : `<div class="esito vuoto">Nessun appuntamento trovato</div>`;
+
+      esiti.querySelectorAll(".esito[data-giorno]").forEach((b) => {
+        b.onclick = () => {
+          giorno = b.dataset.giorno;
+          vista = "giorno";
+          input.value = "";
+          esiti.innerHTML = "";
+          esiti.classList.remove("aperti");
+          caricaAgenda();
+        };
+      });
+    }, 280);
+  };
+
+  input.onblur = () => setTimeout(() => {
+    esiti.innerHTML = "";
+    esiti.classList.remove("aperti");
+  }, 180);
 }
 
 // Toglie la barra dello spostamento: vive fuori dalla griglia, quindi
@@ -219,27 +355,47 @@ function disegnaGiorno(dati) {
     ore += `<div class="ora ${m % 60 === 30 ? "mezza" : ""}">${oraDaMinuti(m)}</div>`;
   }
 
-  const perCabina = new Map(dati.cabine.map((c) => [c.id, []]));
-  for (const a of dati.appuntamenti) perCabina.get(a.cabina_id)?.push(a);
+  // Le colonne sono le operatrici o le cabine, a seconda dell'interruttore.
+  // Chi lavora al bancone di solito ragiona per persona; la cabina serve
+  // quando le stanze sono il vincolo scarso.
+  const perOperatrice = raggruppa === "operatrici";
+  let gruppi = perOperatrice
+    ? (anagrafiche.operatori || []).map((o) => ({ id: o.id, nome: o.nome }))
+    : dati.cabine.map((c) => ({ id: c.id, nome: c.nome }));
 
-  const colonne = dati.cabine.map((cab) => {
-    const blocchi = (perCabina.get(cab.id) || []).map((a) =>
-      bloccoHtml(a, (minuti(a.inizio) - apertura) * PX_MIN, a.durata * PX_MIN, 0, 1)).join("");
-    return `<div class="colonna" style="height:${altezza}px">${blocchi}</div>`;
+  const chiave = (a) => (perOperatrice ? a.operatore_id : a.cabina_id);
+
+  // Gli appuntamenti senza operatrice non devono sparire: hanno una colonna
+  // loro, ma solo se ce n'e' davvero qualcuno.
+  const orfani = dati.appuntamenti.filter((a) => !chiave(a));
+  if (perOperatrice && orfani.length) gruppi = [...gruppi, { id: null, nome: "Non assegnati" }];
+
+  const per = new Map(gruppi.map((g) => [g.id, []]));
+  for (const a of dati.appuntamenti) per.get(chiave(a) ?? null)?.push(a);
+
+  const colonne = gruppi.map((g) => {
+    const lista = (per.get(g.id) || []).sort((x, y) => minuti(x.inizio) - minuti(y.inizio));
+    assegnaCorsie(lista);
+    const blocchi = lista.map((a) =>
+      bloccoHtml(a, (minuti(a.inizio) - apertura) * PX_MIN, a.durata * PX_MIN,
+                 a._corsia, a._corsie)).join("");
+    return `<div class="colonna ${g.id === null ? "orfani" : ""}"
+                 style="height:${altezza}px">${blocchi}</div>`;
   }).join("");
 
-  const n = dati.cabine.length;
+  const n = gruppi.length;
   const css = `grid-template-columns: 62px repeat(${n}, minmax(170px, 1fr))`;
   const q = dati.appuntamenti.length;
+  const manca = perOperatrice ? "Nessuna operatrice configurata." : "Nessuna cabina configurata.";
 
   app.innerHTML = `
     ${barra(`${q} ${q === 1 ? "appuntamento" : "appuntamenti"}`)}
     <div class="griglia-wrap">
       ${n === 0
-        ? `<div class="vuoto">Nessuna cabina configurata per questo centro.</div>`
+        ? `<div class="vuoto">${manca}</div>`
         : `<div class="intestazioni" style="${css}">
              <div class="testa ore"></div>
-             ${dati.cabine.map((c) => `<div class="testa">${esc(c.nome)}</div>`).join("")}
+             ${gruppi.map((g) => `<div class="testa">${esc(g.nome)}</div>`).join("")}
            </div>
            <div class="griglia" style="${css}">
              <div class="colonna-ore">${ore}</div>
@@ -253,8 +409,17 @@ function disegnaGiorno(dati) {
   app.querySelectorAll(".colonna").forEach((col, i) => {
     col.onclick = (e) => {
       const ora = oraDalClick(e, col, apertura, chiusura);
-      if (daSpostare) return concludiSpostamento(dati.cabine[i].id, ora, giorno);
-      apriNuovo(dati.cabine[i].id, ora, giorno);
+      const g = gruppi[i];
+
+      if (daSpostare) {
+        // Spostando fra colonne cambia cio' che la colonna rappresenta: la
+        // cabina se si guarda per cabine, altrimenti solo l'orario.
+        return concludiSpostamento(perOperatrice ? daSpostare.cabina_id : g.id, ora, giorno);
+      }
+      apriNuovo(
+        perOperatrice ? anagrafiche.cabine[0]?.id : g.id,
+        ora, giorno,
+        perOperatrice ? g.id : null);
     };
   });
 
@@ -483,7 +648,7 @@ const STATI = {
   annullato: "Annullato",
 };
 
-function apriNuovo(cabinaId, ora, dataIso) {
+function apriNuovo(cabinaId, ora, dataIso, operatoreId = null) {
   if (!anagrafiche?.trattamenti?.length) {
     const { box, chiudi } = pannello();
     box.innerHTML = `<h2>Manca il listino</h2>
@@ -535,7 +700,8 @@ function apriNuovo(cabinaId, ora, dataIso) {
     <label>Operatrice <span class="opz">(facoltativa)</span></label>
     <select id="operatore">
       <option value="">—</option>
-      ${anagrafiche.operatori.map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join("")}
+      ${anagrafiche.operatori.map((o) =>
+        `<option value="${esc(o.id)}" ${o.id === operatoreId ? "selected" : ""}>${esc(o.nome)}</option>`).join("")}
     </select>
 
     <label>Note <span class="opz">(facoltative)</span></label>
