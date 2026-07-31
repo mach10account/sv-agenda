@@ -1146,12 +1146,17 @@ function caricaFacebookSDK(appId, version) {
 
 // Meta comunica l'esito del giro con un postMessage: lì dentro c'è l'id
 // dell'account WhatsApp, che il callback del login da solo non ci darebbe.
+// L'onboarding dall'app del telefono chiude con un evento diverso da quello
+// standard, ma in entrambi i casi quello che ci serve è il waba_id.
 let ultimaWaba = null;
+let ultimaModalita = "cloud";
 window.addEventListener("message", (ev) => {
   if (!String(ev.origin).endsWith("facebook.com")) return;
   try {
     const d = JSON.parse(ev.data);
-    if (d.type === "WA_EMBEDDED_SIGNUP" && d.data?.waba_id) ultimaWaba = d.data.waba_id;
+    if (d.type !== "WA_EMBEDDED_SIGNUP") return;
+    if (d.data?.waba_id) ultimaWaba = d.data.waba_id;
+    if (d.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") ultimaModalita = "coexistence";
   } catch { /* messaggi non nostri */ }
 });
 
@@ -1165,10 +1170,14 @@ function avviaSignup(configId) {
         setup: {},
         // Variante Coexistence: al posto della scelta dell'account API, Meta
         // propone di collegare il WhatsApp Business che il centro usa già sul
-        // telefono (numero + codice di conferma dentro l'app). Senza questo
-        // parametro comparirebbe solo "crea un account", che non è ciò che
-        // vogliamo far fare alle titolari.
+        // telefono (numero + conferma dentro l'app). Senza questo parametro
+        // comparirebbe solo "crea un account", che non è ciò che vogliamo far
+        // fare alle titolari.
         featureType: "whatsapp_business_app_onboarding",
+        // Meta richiede il "session logging" per la Coexistence: è questo che
+        // accende i postMessage WA_EMBEDDED_SIGNUP, compreso l'evento di fine
+        // onboarding da app. Senza, il flusso ricade su quello standard.
+        sessionInfoVersion: "3",
       },
     });
   });
@@ -1270,6 +1279,7 @@ async function apriIntegrazioni() {
     try {
       await caricaFacebookSDK(cfg.app_id, cfg.graph_version || "v23.0");
       ultimaWaba = null;
+      ultimaModalita = "cloud";
       const code = await avviaSignup(cfg.config_id);
       if (!code) {
         bottone.disabled = false;
@@ -1287,7 +1297,10 @@ async function apriIntegrazioni() {
           apikey: SUPABASE_KEY,
           authorization: `Bearer ${sess.access_token}`,
         },
-        body: JSON.stringify({ centro_id: centro.id, code, waba_id: ultimaWaba }),
+        body: JSON.stringify({
+          centro_id: centro.id, code,
+          waba_id: ultimaWaba, modalita: ultimaModalita,
+        }),
       });
       const esito = await res.json().catch(() => ({}));
       if (!esito?.ok) {
