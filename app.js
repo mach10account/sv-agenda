@@ -1161,7 +1161,15 @@ function avviaSignup(configId) {
       config_id: configId,
       response_type: "code",
       override_default_response_type: true,
-      extras: { setup: {} },
+      extras: {
+        setup: {},
+        // Variante Coexistence: al posto della scelta dell'account API, Meta
+        // propone di collegare il WhatsApp Business che il centro usa già sul
+        // telefono (numero + codice di conferma dentro l'app). Senza questo
+        // parametro comparirebbe solo "crea un account", che non è ciò che
+        // vogliamo far fare alle titolari.
+        featureType: "whatsapp_business_app_onboarding",
+      },
     });
   });
 }
