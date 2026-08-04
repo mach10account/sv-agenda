@@ -1,8 +1,13 @@
 // Integrazioni del centro: per ora il collegamento di WhatsApp Business.
-// Resta un pannello e non una tab: è una cosa che la titolare fa una volta,
-// non un posto dove torna ogni giorno.
+//
+// Era un pannello a comparsa, adesso è una voce della barra con la sua rotta.
+// Non perché ci si torni spesso — è ancora una cosa che la titolare fa una
+// volta — ma perché una voce di navigazione dev'essere un link: passando da
+// route() si spegne quello che la sezione precedente aveva lasciato acceso, e
+// non resta un modale orfano di cui nessuno sa niente. Stessa strada già fatta
+// dalle conversazioni.
 
-import { sb, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from "./core.js?v=14";
+import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pagina } from "./core.js?v=15";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare
@@ -14,6 +19,7 @@ import { sb, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from 
 // continua a rispondere come ha sempre fatto, e quando lo fa il bot tace.
 
 let fbPronto = null;   // promessa risolta quando l'SDK di Facebook è caricato
+let messaggioPendente = "";   // esito arrivato mentre la titolare era altrove
 
 function caricaFacebookSDK(appId, version) {
   if (fbPronto) return fbPronto;
@@ -72,11 +78,17 @@ function avviaSignup(configId) {
   });
 }
 
-export async function apriIntegrazioni() {
-  const { box, chiudi } = pannello();
-  box.classList.add("scheda-larga");
-  box.innerHTML = `<div class="scheda-testa"><h2>Integrazioni</h2></div>
-                   <p class="quando">Caricamento…</p>`;
+export async function mostraIntegrazioni() {
+  // Cintura oltre alle bretelle: la voce non si disegna e route() rimbalza chi
+  // scrive l'indirizzo a mano, ma la difesa vera è dentro il database, che a un
+  // non-titolare risponde {ok:false} invece di dare i dati.
+  if (stato.centro?.ruolo !== "titolare") { location.hash = "#/"; return; }
+
+  app.innerHTML = pagina(`<h1>Integrazioni</h1><p class="sub">Caricamento…</p>`);
+  // Il contenitore si cattura ADESSO, prima delle due attese: se nel frattempo
+  // si cambia sezione, box è staccato dal DOM e quello che scriviamo dopo si
+  // perde in silenzio invece di comparire sopra la pagina nuova.
+  const box = app.querySelector(".pagina");
 
   const [statoRes, cfgRes] = await Promise.all([
     sb.rpc("crm_wa_stato", { p_centro: stato.centro.id }),
@@ -86,27 +98,44 @@ export async function apriIntegrazioni() {
   const cfg = cfgRes.data;
 
   if (statoRes.error || !wa?.ok) {
-    box.innerHTML = `<div class="scheda-testa"><h2>Integrazioni</h2></div>
-      ${erroreBox(statoRes.error?.message || wa?.errore || "Non disponibile")}
-      <button class="btn btn-wide chiudi">Chiudi</button>`;
-    box.querySelector(".chiudi").onclick = chiudi;
+    box.innerHTML = `<h1>Integrazioni</h1>
+      ${erroreBox(statoRes.error?.message || wa?.errore || "Non disponibile")}`;
     return;
   }
 
-  disegna();
+  disegna(messaggioPendente);
+  messaggioPendente = "";
+
+  // Il collegamento va a termine anche se nel frattempo si è cambiata sezione:
+  // la finestra di Facebook non blocca la barra come faceva il velo del
+  // pannello. E un esito non è una lettura che si può perdere in silenzio — il
+  // numero risulterebbe collegato senza che nessuno lo dica, o un errore
+  // sparirebbe — quindi si torna su Integrazioni e si rilegge lo stato vero.
+  function mostraEsito(messaggio = "") {
+    if (location.hash !== "#/integrazioni") {
+      messaggioPendente = messaggio;
+      location.hash = "#/integrazioni";
+      return;
+    }
+    if (box.isConnected) return disegna(messaggio);
+    // Già tornata a mano su Integrazioni: quella pagina ha letto lo stato prima
+    // che il collegamento finisse, va riletto da capo.
+    messaggioPendente = messaggio;
+    return mostraIntegrazioni();
+  }
 
   function disegna(messaggio = "") {
     const collegato = wa.stato === "collegato";
     box.innerHTML = `
-      <div class="scheda-testa"><h2>Integrazioni</h2></div>
+      <h1>Integrazioni</h1>
       ${messaggio ? erroreBox(messaggio) : ""}
       ${wa.errore ? erroreBox(wa.errore) : ""}
       <div class="integrazione">
         <div class="integrazione-testa">
           <strong>WhatsApp Business</strong>
-          <span class="badge-wa ${collegato ? "on" : "off"}">${collegato ? "Collegato" : "Non collegato"}</span>
+          <span class="badge-stato ${collegato ? "on" : "off"}">${collegato ? "Collegato" : "Non collegato"}</span>
         </div>
-        <p class="quando">${collegato
+        <p class="sub">${collegato
           ? `Numero ${esc(wa.numero || "collegato")}. Le clienti scrivono come sempre;
              tu continui a rispondere dal telefono quando vuoi.`
           : `Collega il numero WhatsApp del centro: le richieste delle clienti
@@ -119,15 +148,12 @@ export async function apriIntegrazioni() {
           </label>
           <button class="btn-secondario" id="wa-scollega">Scollega</button>
         ` : `
-          <button class="btn btn-wide" id="wa-collega" ${cfg?.pronto ? "" : "disabled"}>
+          <button class="btn" id="wa-collega" ${cfg?.pronto ? "" : "disabled"}>
             Collega WhatsApp Business
           </button>
-          ${cfg?.pronto ? "" : `<p class="quando">Collegamento non ancora attivo: stiamo completando la verifica con Meta.</p>`}
+          ${cfg?.pronto ? "" : `<p class="sub">Collegamento non ancora attivo: stiamo completando la verifica con Meta.</p>`}
         `}
-      </div>
-      <button class="btn-secondario chiudi">Chiudi</button>`;
-
-    box.querySelector(".chiudi").onclick = chiudi;
+      </div>`;
 
     const bottone = box.querySelector("#wa-collega");
     if (bottone) bottone.onclick = () => collega(bottone);
@@ -173,7 +199,10 @@ export async function apriIntegrazioni() {
       if (!code) {
         bottone.disabled = false;
         bottone.textContent = "Collega WhatsApp Business";
-        return disegna("Collegamento annullato.");
+        // Chi ha cambiato sezione ha abbandonato il giro: riportarla indietro
+        // per dirle "annullato" sarebbe peggio del silenzio.
+        if (box.isConnected) disegna("Collegamento annullato.");
+        return;
       }
 
       // Il codice scade in una trentina di secondi: si consegna subito.
@@ -195,17 +224,17 @@ export async function apriIntegrazioni() {
       if (!esito?.ok) {
         bottone.disabled = false;
         bottone.textContent = "Collega WhatsApp Business";
-        return disegna(esito?.errore || "Collegamento non riuscito");
+        return mostraEsito(esito?.errore || "Collegamento non riuscito");
       }
       wa.stato = "collegato";
       wa.numero = esito.numero;
       wa.bot_attivo = true;
       wa.errore = null;
-      disegna();
+      mostraEsito();
     } catch (e) {
       bottone.disabled = false;
       bottone.textContent = "Collega WhatsApp Business";
-      disegna(String(e.message || e));
+      mostraEsito(String(e.message || e));
     }
   }
 }

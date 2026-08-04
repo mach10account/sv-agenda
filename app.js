@@ -1,25 +1,25 @@
-// Il guscio del sito: accesso, tab e menu. Le sezioni vere stanno nei loro
-// file e non si conoscono fra loro — qui si decide solo quale far vedere.
+// Il guscio del sito: accesso, barra, rotte e profilo. Le sezioni vere stanno
+// nei loro file e non si conoscono fra loro — qui si decide solo quale far
+// vedere.
 //
 // Un centro entra una volta sola e trova tutto: l'agenda, le conversazioni
-// delle clienti, i corsi e l'assistente. Le tab che compaiono dipendono da
+// delle clienti, i corsi e l'assistente. Le voci che compaiono dipendono da
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc } from "./core.js?v=14";
-import { mostraAgenda } from "./agenda.js?v=14";
-import { mostraConversazioni } from "./conversazioni.js?v=14";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=14";
-import { mostraAssistente } from "./assistente.js?v=14";
-import { apriIntegrazioni } from "./integrazioni.js?v=14";
+import { sb, app, stato, esc, pagina } from "./core.js?v=15";
+import { mostraAgenda } from "./agenda.js?v=15";
+import { mostraConversazioni } from "./conversazioni.js?v=15";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=15";
+import { mostraAssistente } from "./assistente.js?v=15";
+import { mostraIntegrazioni } from "./integrazioni.js?v=15";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
 
 const topbar = document.getElementById("topbar");
 const barraTab = document.getElementById("tabs");
-const bottoneMenu = document.getElementById("menu");
-const menu = document.getElementById("menu-voci");
+const barraServizi = document.getElementById("tabs-servizi");
 
 // Il logo è un'immagine, il nome accanto è testo. Se l'immagine non arriva
 // (file mancante, rete a scatti) sparisce e resta il nome: un riquadro rotto
@@ -29,32 +29,57 @@ marchio.addEventListener("error", () => { marchio.hidden = true; });
 
 // Lo stesso marchio, grande, sopra le schermate di accesso.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=14" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=15" alt="Estetista Indipendente"
         onerror="this.remove()">
    <h1 class="titolo-marchio"><b>Estetista</b><i>Indipendente</i></h1>`;
 
 let recovering = false;   // true mentre si sta impostando la password dal link
+let caricando = false;    // true mentre boot() sta ancora chiedendo centri e corsi
 let pulizia = null;       // cosa spegnere uscendo dalla sezione corrente
 
 // ------------------------------------------------------------------ sezioni
 
 const haCorsi = () => (stato.catalogo ?? []).some((c) => c.has_access);
 
+// Due gruppi: sopra il lavoro di ogni giorno, sotto le due voci di servizio.
+// La divisione non è estetica — è quello che permette a Integrazioni e Profilo
+// di stare in fondo alla colonna e di ridursi al solo segno sul telefono,
+// dove le parole rubano lo spazio alle sezioni vere.
 const SEZIONI = [
-  { id: "agenda",        nome: "Agenda",        disponibile: () => !!stato.centro },
-  { id: "conversazioni", nome: "Conversazioni", disponibile: () => stato.centro?.ruolo === "titolare" },
-  { id: "corsi",         nome: "Corsi",         disponibile: haCorsi },
-  { id: "assistente",    nome: "Assistente",    disponibile: haCorsi },
+  { id: "agenda",        nome: "Agenda",        segno: "▤", gruppo: 1, disponibile: () => !!stato.centro },
+  { id: "conversazioni", nome: "Conversazioni", segno: "✆", gruppo: 1, disponibile: () => stato.centro?.ruolo === "titolare" },
+  { id: "corsi",         nome: "Corsi",         segno: "▷", gruppo: 1, disponibile: haCorsi },
+  { id: "assistente",    nome: "Assistente",    segno: "✦", gruppo: 1, disponibile: haCorsi },
+  { id: "integrazioni",  nome: "Integrazioni",  segno: "⚙", gruppo: 2, disponibile: () => stato.centro?.ruolo === "titolare" },
+  // Profilo è l'unica voce che c'è sempre: è da lì che si esce, e chi non ha
+  // ancora niente collegato deve comunque poterlo fare.
+  { id: "profilo",       nome: "Profilo",       segno: "⋯", gruppo: 2, disponibile: () => !!stato.session },
 ];
 
-// Corso e lezione sono figli di "Corsi": la tab da accendere è quella.
+// Corso e lezione sono figli di "Corsi": la voce da accendere è quella.
 const TAB_DI = { corso: "corsi", lezione: "corsi" };
 
 const disponibili = () => SEZIONI.filter((s) => s.disponibile());
+// Le sezioni vere, senza le voci di servizio: sono queste a decidere se questa
+// persona ha davvero qualcosa da guardare.
+const principali = () => disponibili().filter((s) => s.gruppo === 1);
 
-function disegnaTab(attiva) {
-  barraTab.innerHTML = disponibili().map((s) => `
-    <a class="tab ${s.id === attiva ? "attiva" : ""}" href="#/${s.id}">${esc(s.nome)}</a>`).join("");
+function disegnaBarra(attiva) {
+  const voce = (s) => `
+    <a class="tab ${s.id === attiva ? "attiva" : ""}" href="#/${s.id}"
+       aria-label="${esc(s.nome)}"${s.id === attiva ? ' aria-current="page"' : ""}>
+      <span class="tab-segno" aria-hidden="true">${s.segno}</span><span class="tab-nome">${esc(s.nome)}</span>
+    </a>`;
+  const gruppo = (n) => disponibili().filter((s) => s.gruppo === n).map(voce).join("");
+
+  barraTab.innerHTML = gruppo(1);
+  barraServizi.innerHTML = gruppo(2);
+
+  // In riga le voci scorrono, e riscrivendole lo scorrimento riparte da zero:
+  // su un telefono la voce accesa può cadere fuori dallo schermo e la barra
+  // sembra non averne nessuna. La si riporta in vista, come già si fa con il
+  // giorno scelto nella striscia dell'agenda.
+  barraTab.querySelector(".attiva")?.scrollIntoView({ block: "nearest", inline: "center" });
 }
 
 // --------------------------------------------------------------- accesso
@@ -171,7 +196,7 @@ async function renderTokenRecovery(tokenHash) {
   renderNewPassword(true);
 }
 
-// Nuova password: dal link di recupero, oppure dal menu quando si e' dentro.
+// Nuova password: dal link di recupero, oppure dal Profilo quando si e' dentro.
 function renderNewPassword(dalRecupero) {
   topbar.hidden = !stato.session || dalRecupero;
   app.innerHTML = `
@@ -183,7 +208,7 @@ function renderNewPassword(dalRecupero) {
         <input id="p2" type="password" required minlength="8" placeholder="Ripeti la password" autocomplete="new-password">
         <button class="btn btn-wide" type="submit">Salva</button>
       </form>
-      ${dalRecupero ? "" : `<p class="sub small"><a href="#/">Annulla</a></p>`}
+      ${dalRecupero ? "" : `<p class="sub small"><a href="#/profilo">Annulla</a></p>`}
     </div>`;
 
   document.getElementById("f").addEventListener("submit", async (e) => {
@@ -212,40 +237,47 @@ function renderNewPassword(dalRecupero) {
   });
 }
 
-// ------------------------------------------------------------------- menu
+// ---------------------------------------------------------------- profilo
 
-function disegnaMenu() {
-  const titolare = stato.centro?.ruolo === "titolare";
-  // Sul telefono il nome del centro mangia lo spazio delle tab: resta solo
-  // il segno del menu. Chi lo tocca vede comunque nome ed email dentro.
-  bottoneMenu.innerHTML =
-    `<span class="menu-nome">${esc(stato.centro?.nome || stato.session.user.email)} ⌄</span>
-     <span class="menu-segno">⋯</span>`;
-  menu.innerHTML = `
-    <span class="menu-chi">${esc(stato.session.user.email)}</span>
-    ${titolare ? `<button data-voce="integrazioni">Integrazioni</button>` : ""}
-    <button data-voce="password">Cambia password</button>
-    <button data-voce="esci">Esci</button>`;
+// Prende il posto del menu a tendina e ne eredita le tre voci: chi sei, cambia
+// password, esci. È fatta solo di roba che il guscio ha già in mano — nessuna
+// chiamata nuova — ed è il motivo per cui sta qui e non in un file suo: un
+// modulo in meno è un ?v= in meno da tenere allineato.
+function mostraProfilo() {
+  const centro = stato.centro;
+  // Cabine e operatrici arrivano solo se c'è un centro (boot le chiede lì
+  // dentro): chi ha soltanto i corsi trova stato.anagrafiche ancora a null, ed
+  // è proprio la persona per cui Profilo è l'unica pagina che vede.
+  const anag = stato.anagrafiche || {};
+  const elenco = (titolo, righe) => (righe || []).length
+    ? `<h2>${titolo}</h2><p>${righe.map((r) => esc(r.nome)).join(" · ")}</p>` : "";
 
-  menu.querySelectorAll("button").forEach((b) => {
-    b.onclick = async () => {
-      menu.hidden = true;
-      if (b.dataset.voce === "integrazioni") return apriIntegrazioni();
-      if (b.dataset.voce === "password") { location.hash = "#/password"; return; }
-      await sb.auth.signOut();
-      location.hash = "#/";
-      location.reload();
-    };
-  });
+  app.innerHTML = pagina(`
+    <h1>Profilo</h1>
+    <p class="sub">Chi sei e come esci. Per cambiare i dati del centro scrivi al tuo consulente.</p>
+
+    <dl class="scheda-dati">
+      <dt>Accesso</dt><dd>${esc(stato.session.user.email)}</dd>
+      ${centro ? `<dt>Centro</dt><dd>${esc(centro.nome)}</dd>
+                  <dt>Ruolo</dt><dd>${esc(centro.ruolo || "—")}</dd>` : ""}
+    </dl>
+
+    ${centro ? `
+      ${elenco("Cabine", anag.cabine)}
+      ${elenco("Chi lavora in cabina", anag.operatori)}
+    ` : `<p class="sub">Il tuo accesso non è collegato a nessun centro.</p>`}
+
+    <div class="azioni-profilo">
+      <a class="btn-secondario" href="#/password">Cambia password</a>
+      <button class="btn-secondario pericolo" id="esci">Esci</button>
+    </div>`);
+
+  document.getElementById("esci").onclick = async () => {
+    await sb.auth.signOut();
+    location.hash = "#/";
+    location.reload();
+  };
 }
-
-bottoneMenu.addEventListener("click", (e) => {
-  e.stopPropagation();
-  menu.hidden = !menu.hidden;
-});
-document.addEventListener("click", (e) => {
-  if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true;
-});
 
 // ----------------------------------------------------------------- rotte
 
@@ -254,31 +286,47 @@ function route() {
   // e il battito delle conversazioni. Si spengono qui, in un posto solo.
   fermaWatermark();
   if (pulizia) { pulizia(); pulizia = null; }
-  menu.hidden = true;
+
+  // Pannello aperto e spostamento a metà vivono appesi al body, fuori da #app:
+  // cambiando sezione resterebbero piantati sopra quella nuova. Vale anche per
+  // il tasto indietro del browser, che passa di qui come ogni altra rotta.
+  document.querySelectorAll(".velo").forEach((v) => v.remove());
+  document.querySelector(".barra-spostamento")?.remove();
+  document.body.classList.remove("in-spostamento");
 
   const parti = (location.hash || "#/").split("/");
   const sezione = parti[1] || "";
   const param = parti[2];
 
-  if (sezione === "password") { disegnaTab(null); return renderNewPassword(false); }
+  // Il cambio password non è una sezione ma si arriva dal Profilo: la voce da
+  // tenere accesa è quella, altrimenti la barra sembra non appartenere a nulla.
+  if (sezione === "password") { disegnaBarra("profilo"); return renderNewPassword(false); }
 
   const aperte = disponibili();
-  if (!aperte.length) {
-    disegnaTab(null);
+  const prime = principali();
+
+  // Senza nemmeno una sezione vera non c'è niente da guardare — ma Profilo deve
+  // restare raggiungibile lo stesso: è l'unica strada per uscire.
+  if (!prime.length && sezione !== "profilo") {
+    disegnaBarra(null);
     app.innerHTML = `<div class="vuoto">Il tuo accesso non è ancora collegato a nulla.<br>
                      Scrivi al tuo consulente.</div>`;
     return;
   }
 
   // Rotta sconosciuta, o sezione a cui questa persona non ha accesso: si
-  // atterra sulla prima tab che ha. Meglio una pagina utile di un errore.
+  // atterra sulla prima voce che ha. Meglio una pagina utile di un errore.
   const tab = TAB_DI[sezione] || sezione;
   if (!aperte.some((s) => s.id === tab)) {
-    location.hash = `#/${aperte[0].id}`;
+    // replace e non assegnazione all'hash: il rimbalzo deve SOSTITUIRE la rotta
+    // vietata nella cronologia, non aggiungersi dopo di lei. Altrimenti il tasto
+    // indietro ci rientra, viene rimbalzato di nuovo in avanti, e da lì non si
+    // torna più indietro né si esce dal sito.
+    location.replace(`#/${(prime[0] || { id: "profilo" }).id}`);
     return;
   }
 
-  disegnaTab(tab);
+  disegnaBarra(tab);
 
   if (sezione === "agenda")        pulizia = mostraAgenda();
   else if (sezione === "conversazioni") pulizia = mostraConversazioni();
@@ -286,6 +334,10 @@ function route() {
   else if (sezione === "corso")    mostraCorso(param);
   else if (sezione === "lezione")  mostraLezione(param);
   else if (sezione === "assistente") mostraAssistente(param, parti[3]);
+  // Integrazioni e Profilo non lasciano niente acceso: nessuna pulizia da
+  // restituire, a differenza di agenda e conversazioni.
+  else if (sezione === "integrazioni") mostraIntegrazioni();
+  else if (sezione === "profilo")  mostraProfilo();
 }
 
 // ------------------------------------------------------------------- boot
@@ -296,35 +348,51 @@ async function boot() {
   const [, sezione, parametro] = (location.hash || "#/").split("/");
   if (sezione === "nuova-password" && parametro) return renderTokenRecovery(parametro);
 
+  // Se si è lasciato il link di recupero senza salvare, la parentesi si chiude
+  // qui: questo boot ricarica lo stato, e dai clic successivi basta route().
+  // Senza, ogni voce della barra rifarebbe da capo accesso, centri e corsi.
+  recovering = false;
+
   const { data } = await sb.auth.getSession();
   stato.session = data.session;
 
   if (!stato.session) return (sezione === "recupera") ? renderRecover() : renderLogin();
 
+  caricando = true;
   app.innerHTML = `<div class="loading">Caricamento…</div>`;
 
-  // Centri e corsi si chiedono insieme: sono due domande indipendenti e
-  // aspettarle in fila raddoppierebbe l'attesa all'ingresso.
-  const [centriRes] = await Promise.all([
-    sb.rpc("crm_miei_centri"),
-    caricaCatalogo(),
-  ]);
+  // Il finally non è ornamentale: se una di queste chiamate solleva, `caricando`
+  // resterebbe alzato e da lì in poi ogni clic sulla barra verrebbe ignorato in
+  // silenzio — un sito che non risponde più, senza niente a schermo che lo dica.
+  try {
+    // Centri e corsi si chiedono insieme: sono due domande indipendenti e
+    // aspettarle in fila raddoppierebbe l'attesa all'ingresso.
+    const [centriRes] = await Promise.all([
+      sb.rpc("crm_miei_centri"),
+      caricaCatalogo(),
+    ]);
 
-  stato.centri = centriRes.data || [];
-  stato.centro = stato.centri[0] || null;   // con piu' centri, in futuro qui va un selettore
+    stato.centri = centriRes.data || [];
+    stato.centro = stato.centri[0] || null;   // con piu' centri, in futuro qui va un selettore
 
-  if (stato.centro) {
-    // Cabine, operatrici e trattamenti cambiano di rado: si caricano una volta.
-    const { data: anag } = await sb.rpc("crm_anagrafiche", { p_centro: stato.centro.id });
-    stato.anagrafiche = anag || { cabine: [], operatori: [], trattamenti: [] };
+    if (stato.centro) {
+      // Cabine, operatrici e trattamenti cambiano di rado: si caricano una volta.
+      const { data: anag } = await sb.rpc("crm_anagrafiche", { p_centro: stato.centro.id });
+      stato.anagrafiche = anag || { cabine: [], operatori: [], trattamenti: [] };
+    }
+  } finally {
+    caricando = false;
   }
 
   topbar.hidden = false;
-  disegnaMenu();
   route();
 }
 
 window.addEventListener("hashchange", () => {
+  // Finché boot() sta ancora chiedendo centri e corsi, stato è a metà: route()
+  // non troverebbe nessuna sezione e dipingerebbe "non collegato a nulla" a chi
+  // ha appena fatto l'accesso. Ci pensa boot() a disegnare quando ha finito.
+  if (caricando) return;
   if (!stato.session || recovering) return boot();
   route();
 });

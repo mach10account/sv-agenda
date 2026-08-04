@@ -5,29 +5,40 @@ nello stesso posto. Un centro entra una volta sola.
 
 Prima erano due siti separati (SV Agenda e SV Academy) sullo stesso database
 e con lo stesso accesso: il centro doveva ricordarsi due indirizzi. Adesso
-sono quattro tab della stessa barra.
+sono sei voci della stessa barra.
 
-## Le tab
+## Le voci
 
-| tab | chi la vede | cosa contiene |
+La barra sta **a sinistra**, in colonna, ed è divisa in due gruppi: sopra il
+lavoro di ogni giorno, sotto le due voci di servizio.
+
+| voce | chi la vede | cosa contiene |
 |---|---|---|
 | Agenda | chi è collegato a un centro | la giornata divisa per operatrice o per cabina, più settimana e mese |
 | Conversazioni | solo la titolare | le chat WhatsApp delle clienti col bot, e una chat di prova |
 | Corsi | chi ha almeno un corso attivo | catalogo, lezioni, video |
 | Assistente | chi ha almeno un corso attivo | la chat sui contenuti dei corsi |
+| Integrazioni | solo la titolare | il collegamento di WhatsApp Business |
+| Profilo | chiunque sia entrato | email, centro, cambio password, uscita |
 
-Le tab non vengono nascoste dopo essere state disegnate: si disegnano solo
+Le voci non vengono nascoste dopo essere state disegnate: si disegnano solo
 quelle a cui quella persona ha davvero accesso. Chi apre una rotta che non gli
-spetta atterra sulla sua prima tab, non su un errore.
+spetta atterra sulla sua prima voce, non su un errore. Profilo c'è sempre,
+anche per chi non ha ancora niente collegato: è da lì che si esce.
 
-Integrazioni, cambio password e uscita stanno nel menu in alto a destra.
+Sotto gli **820 pixel** la barra torna in cima, orizzontale: una colonna da 236
+si mangerebbe un terzo di uno schermo stretto. Sotto i 620 le due voci di
+servizio si riducono al solo segno, ⚙ e ⋯, perché le parole rubano lo spazio
+alle sezioni vere.
 
 ## Il marchio
 
 Il logo è `logo.png`, ed è lui a dare i colori a tutto il resto: il rosa della
 scritta (`--rosa`), l'oro del filetto (`--oro`), il nero della sagoma
-(`--ink`). Da qui la barra in alto è **bianca** e non scura: il logo ha lo
-sfondo bianco e su una fascia colorata si vedrebbe il rettangolo.
+(`--ink`). Da qui la barra è **bianca** e non scura: il logo ha lo sfondo
+bianco e su una fascia colorata si vedrebbe il rettangolo. Il filetto oro che
+la chiude, come nel logo, sta sul bordo destro quando è in colonna e sul bordo
+basso quando è in cima.
 
 Se il file manca, al suo posto compare il nome scritto: meglio di un riquadro
 rotto in cima alla pagina.
@@ -65,8 +76,8 @@ creare appuntamenti all'ora sbagliata.
 
 | file | contenuto |
 |---|---|
-| `index.html` | barra, tab, contenitore |
-| `app.js` | accesso, tab, menu, rotte |
+| `index.html` | barra, voci, contenitore |
+| `app.js` | accesso, barra, rotte, profilo |
 | `core.js` | collegamento a Supabase e stato condiviso |
 | `agenda.js` | griglia, pannelli, spostamento |
 | `conversazioni.js` | chat delle clienti e prova del bot |
@@ -84,7 +95,7 @@ se `app.js` è nuovo e `agenda.js` è vecchio, i due lavorano su due `stato`
 diversi. Un comando solo:
 
 ```bash
-grep -rl '?v=14' . --include='*.js' --include='*.html' | xargs sed -i '' 's/?v=14/?v=15/g'
+grep -rl '?v=15' . --include='*.js' --include='*.html' | xargs sed -i '' 's/?v=15/?v=16/g'
 ```
 
 Il vecchio indirizzo dell'Academy (`mach10account.github.io/sv-academy`) è

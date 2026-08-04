@@ -14,14 +14,26 @@
   --ok-bg: #e8f4ef;
   --radius: 12px;
 
-  /* Altezza della barra in alto: la usano anche la testata dell'agenda e la
-     schermata delle conversazioni, che ci si appoggiano sotto. */
-  --barra-h: 62px;
+  /* Quanto spazio si porta via la barra di navigazione. Sono due misure e non
+     una perché la barra cambia lato: in colonna a sinistra sopra gli 820px,
+     in cima sotto. Chi le legge — la testata dell'agenda, le conversazioni —
+     non deve sapere dov'è finita la barra, solo quanto gliene resta. In ogni
+     modalità una delle due è zero. */
+  --barra-w: 236px;
+  --barra-alta-h: 0px;
 
   /* Altezza di uno slot da 30 minuti. Da qui deriva tutta la griglia. */
   --slot-h: 46px;
 }
 
+/* Chi sta sopra a chi, ora che la barra è fissa e non più in flusso:
+   intestazioni 15 < testata 20 < barra 30 < pillola dello spostamento 40 <
+   velo 50. Il velo SOPRA la barra è voluto: con un pannello aperto la
+   navigazione non dev'essere cliccabile, altrimenti si cambia sezione e il velo
+   resta appeso sopra quella nuova.
+   Attenzione a leggere questi numeri: la testata ha uno z-index suo, quindi
+   sigilla i propri figli — il calendario a tendina e i risultati della ricerca
+   non salgono sopra il 20 per quanto grande sia il numero che hanno dentro. */
 * { box-sizing: border-box; }
 
 body {
@@ -38,21 +50,38 @@ body {
 
 /* Barra chiara, non scura: il logo ha lo sfondo bianco e su una fascia
    colorata si vedrebbe il rettangolo. A dare il colore ci pensa il marchio,
-   più il filetto oro che chiude la barra come nel logo. */
+   più il filetto oro che chiude la barra come nel logo — che qui passa dal
+   bordo basso al bordo destro, ma resta.
+
+   Fissa e non appiccicata: un figlio del body alto quanto lo schermo con
+   position:sticky non dà nessuna garanzia utile, e fixed non crea contesti di
+   scorrimento nuovi. È questo che permette di non toccare nessuno dei quattro
+   elementi che si appiccicano già (testata, intestazioni, testa del pannello,
+   campo dell'assistente): il documento resta lo scorrevole, come prima. */
 #topbar {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 18px;
-  height: var(--barra-h);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 18px 12px;
+  width: var(--barra-w);
   background: #fff;
   color: var(--ink);
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 1px 0 rgba(217,164,65,.35);
-  position: sticky;
-  top: 0;
+  border-right: 1px solid var(--line);
+  box-shadow: 1px 0 0 rgba(217,164,65,.35);
+  position: fixed;
+  inset: 0 auto 0 0;
+  overflow-y: auto;
   z-index: 30;
 }
+
+/* Il contenuto si sposta a destra di quanto occupa la barra — ma solo quando la
+   barra c'è. Il rientro si AGGIUNGE a barra visibile invece di toglierlo a barra
+   nascosta: così il caso di partenza è già giusto e non dipende da nessuna
+   regola. Se dipendesse, su un browser che non la capisce il riquadro
+   dell'accesso resterebbe spostato di mezza barra — la prima cosa che vede chi
+   entra, e l'ultima che vede chi sviluppa, che è già dentro. */
+#topbar:not([hidden]) + #app { margin-left: var(--barra-w); }
 
 /* Il logo ha lo sfondo scuro, la barra è chiara: sta come una piastrella
    arrotondata, che è come lo si legge sul telefono. La scritta accanto
@@ -73,6 +102,7 @@ body {
   flex-direction: column;
   line-height: 1.1;
   white-space: nowrap;
+  margin: 0 0 10px 4px;
 }
 .brand b {
   font-size: 17px;
@@ -88,99 +118,56 @@ body {
   text-transform: uppercase;
   color: var(--oro);
 }
-.spacer { flex: 1; }
-
-.btn-ghost {
-  background: #fff;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13.5px;
-  cursor: pointer;
-  font-family: inherit;
+/* Il vuoto che tiene Integrazioni e Profilo in fondo alla colonna, staccate
+   dalle sezioni vere. Se non c'è nessuna sezione — accesso non ancora
+   collegato a niente — smette di spingere: una voce sola in fondo a una
+   colonna bianca sembrerebbe un guasto. */
+.separa-gruppi { flex: 1; }
+/* Solo in colonna. In riga il vuoto serve comunque a tenere il ⋯ del Profilo
+   all'estremità destra della barra, dov'è in ogni altra schermata: incollato al
+   logo, senza nome e senza bordo, non si riconoscerebbe come l'unica uscita. */
+@media (min-width: 821px) {
+  #tabs:empty ~ .separa-gruppi { flex: none; }
 }
-.btn-ghost:hover { border-color: var(--rosa); color: var(--rosa); }
 
-/* ---------------------------------------------------------------- tab */
+/* ---------------------------------------------------------------- voci */
 
-/* Le tab stanno nella barra in alto: non rubano altezza all'agenda, che
-   è la sezione dove ogni pixel verticale è una mezz'ora in più a schermo. */
+/* In colonna: la barra le impila e la voce accesa si riconosce dal filetto
+   rosa a sinistra più il fondo tenue. Su 236 pixel il solo cambio di colore
+   del testo non basterebbe a farla saltare all'occhio. */
 .tabs {
   display: flex;
-  gap: 2px;
+  flex-direction: column;
   align-items: stretch;
-  height: 100%;
-  /* Sul telefono le tab non ci stanno tutte: si stringono e scorrono di lato
-     invece di finire sotto il menu. Senza min-width:0 il flex non le lascia
-     rimpicciolire e l'ultima sparisce dietro al bottone. */
+  gap: 2px;
+  /* height:auto non è opzionale: con height:100% in colonna le voci si
+     prenderebbero tutta la barra e il separatore non spingerebbe più niente. */
+  height: auto;
   flex: 0 1 auto;
   min-width: 0;
-  overflow-x: auto;
+  overflow-y: auto;
   scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
+.tabs-servizi { flex: none; }
 
 .tab {
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  gap: 10px;
+  padding: 10px 14px;
   color: var(--muted);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
-  border-bottom: 3px solid transparent;
-  border-radius: 0;
+  border-left: 3px solid transparent;
+  border-bottom: 0;
+  border-radius: 0 10px 10px 0;
 }
-.tab:hover { color: var(--ink); }
-.tab.attiva { color: var(--rosa); border-bottom-color: var(--rosa); }
-
-/* --------------------------------------------------------------- menu */
-
-.menu-wrap { position: relative; }
-
-.menu-voci {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  min-width: 210px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 10px 34px rgba(58,32,44,.18);
-  padding: 6px;
-  z-index: 40;
-}
-.menu-voci[hidden] { display: none; }
-
-.menu-chi {
-  display: block;
-  padding: 8px 12px 10px;
-  font-size: 12.5px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 6px;
-  overflow-wrap: anywhere;
-}
-
-.menu-voci button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: none;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-  color: var(--ink);
-  cursor: pointer;
-}
-.menu-voci button:hover { background: var(--rosa-tenue); }
-
-.menu-nome { display: inline; }
-.menu-segno { display: none; font-size: 16px; line-height: 1; }
+.tab:hover { color: var(--ink); background: var(--rosa-tenue); }
+.tab.attiva { color: var(--rosa); border-left-color: var(--rosa); background: var(--rosa-tenue); }
+.tab-segno { width: 18px; text-align: center; flex: none; }
 
 /* -------------------------------------------------------------- login */
 
@@ -274,7 +261,9 @@ body {
   background: #fff;
   border-bottom: 1px solid var(--line);
   position: sticky;
-  top: var(--barra-h);
+  /* Si aggancia sotto la barra solo quando la barra è in cima: di lato quel
+     valore è zero e la testata si appiccica al bordo alto dello schermo. */
+  top: var(--barra-alta-h);
   z-index: 20;
 }
 
@@ -319,7 +308,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   border-radius: 10px;
   box-shadow: 0 8px 28px rgba(58,32,44,.14);
   overflow: hidden;
-  z-index: 30;
+  z-index: 25;
   display: none;
   max-height: 340px;
   overflow-y: auto;
@@ -576,9 +565,15 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   font-weight: 600;
 }
 
+/* minmax(0, 1fr) e non 1fr: l'aspect-ratio della cella qui sotto rimanda
+   indietro l'altezza del contenuto come larghezza minima, e sette minimi da 93
+   pixel più i vuoti fanno una griglia da 686 che non si comprime più. Sotto
+   quella soglia — su ogni telefono, e da quando la barra sta di lato anche
+   attorno ai 900 — sfondava di lato tutta la pagina. Meglio una cella un po'
+   più bassa del quadrato che una barra di scorrimento orizzontale. */
 .mese {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -632,7 +627,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
      si ancora al bordo di questo riquadro invece che alla pagina. Ancorata
      alla pagina veniva spinta in basso sopra gli appuntamenti. */
   overflow: auto;
-  height: calc(100vh - var(--testata-h, 190px));
+  height: max(240px, calc(100dvh - var(--testata-h, 128px)));
 }
 
 .griglia {
@@ -758,6 +753,10 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   position: fixed;
   inset: 0;
   background: rgba(36,26,32,.38);
+  /* Copre anche la barra — con un pannello aperto la navigazione non dev'essere
+     cliccabile — ma la scheda si centra sullo spazio che resta al contenuto,
+     non sullo schermo, altrimenti risulta spostata di mezza barra. */
+  padding-left: var(--barra-w);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -769,7 +768,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   width: 100%;
   max-width: 460px;
   padding: 22px;
-  max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
 }
 .scheda h2 { margin: 0 0 3px; font-size: 18px; }
@@ -862,7 +861,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 
 .barra-spostamento {
   position: fixed;
-  left: 50%;
+  left: calc(50% + var(--barra-w) / 2);
   bottom: 18px;
   transform: translateX(-50%);
   background: var(--rosa);
@@ -955,7 +954,11 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 
 /* --------------------------------------------------------- integrazioni */
 
+/* Il riquadro era nato dentro un pannello da 520 pixel. Adesso vive in una
+   pagina larga il triplo, e senza un limite suo diventerebbe una fascia vuota
+   con tre parole in mezzo: il contenuto non è cresciuto insieme al contenitore. */
 .integrazione {
+  max-width: 520px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 16px;
@@ -989,8 +992,10 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 }
 .riga-switch input { width: auto; margin: 0; }
 
-/* Azione secondaria dentro i pannelli: .btn-ghost e' fatto per la barra
-   scura in alto e qui sarebbe invisibile. */
+/* Azione secondaria: il bottone pieno rosa è per la cosa principale, questo
+   per tutto il resto. Largo quanto il pannello quando sta in un pannello —
+   lì è l'unica cosa nella riga — ma dentro una pagina torna della sua
+   larghezza, altrimenti "Scollega" diventa un bottone da mille pixel. */
 .btn-secondario {
   width: 100%;
   padding: 11px 16px;
@@ -1000,10 +1005,32 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   color: var(--ink);
   font-size: 14.5px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
 }
 .btn-secondario:hover { border-color: #c3cbdb; background: #fafbfc; }
 .btn-secondario:disabled { opacity: .5; cursor: default; }
+.pagina .btn-secondario { width: auto; }
+.pagina a.btn-secondario { display: inline-block; text-decoration: none; }
+.btn-secondario.pericolo { color: #8d2b25; border-color: #f0d4d1; }
+.btn-secondario.pericolo:hover { background: #fdeceb; border-color: #e3b6b2; }
+
+/* ------------------------------------------------------------- profilo */
+
+/* Chi sei, in due colonne strette: l'etichetta a sinistra e il dato a destra.
+   Stessa forma della scheda dell'appuntamento, perché è la stessa cosa —
+   quattro righe da leggere, niente da compilare. */
+.scheda-dati {
+  margin: 0 0 26px;
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 7px 12px;
+  max-width: 520px;
+}
+.scheda-dati dt { color: var(--muted); }
+.scheda-dati dd { margin: 0; overflow-wrap: anywhere; }
+
+.azioni-profilo { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 32px; }
 
 /* ------------------------------------------------------ conversazioni */
 
@@ -1011,7 +1038,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
    per conto loro, il campo di scrittura resta in fondo. Da qui l'altezza
    fissa: senza un fondo, il campo di scrittura non ha su cosa appoggiarsi. */
 .wa-schermo {
-  height: calc(100vh - var(--barra-h));
+  height: calc(100dvh - var(--barra-alta-h));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1124,15 +1151,6 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 .btn-mini:hover { border-color: #c3cbdb; }
 .btn-mini:disabled { opacity: .5; cursor: default; }
 
-.btn-x {
-  background: none;
-  border: 0;
-  font-size: 17px;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 2px 6px;
-}
-
 .wa-nota {
   margin: 0;
   padding: 9px 18px;
@@ -1215,8 +1233,14 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 .wa-scrivi input:focus { outline: none; border-color: var(--rosa); }
 .wa-scrivi .btn { border-radius: 999px; padding: 10px 20px; font-size: 14.5px; }
 
-/* Sul telefono non c'e' spazio per due colonne: prima l'elenco, poi la chat. */
-@media (max-width: 700px) {
+/* Non c'e' spazio per due colonne: prima l'elenco, poi la chat.
+   Due soglie e non una perche' quello che conta non e' quanto e' larga la
+   finestra ma quanto ne resta a questa sezione: sotto i 700 la barra e' in cima
+   e la larghezza e' tutta sua; sopra gli 820 la barra e' di lato e se ne porta
+   via 236 prima ancora di cominciare, quindi la stessa strettezza arriva con
+   una finestra molto piu' grande. Spostare e basta il numero avrebbe mandato le
+   conversazioni a colonna singola a 900 pixel di finestra, dove ce ne sono 900. */
+@media (max-width: 700px), (820px < width <= 936px) {
   .wa-lista { width: 100%; border-right: 0; }
   .wa-thread { display: none; }
   .wa-indietro { display: block; }
@@ -1451,8 +1475,65 @@ a.btn { text-decoration: none; display: inline-block; }
 .chat-form input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
 .chat-form .btn { border-radius: 999px; }
 
+/* ===================================================== la barra cambia lato
+
+   Sotto gli 820 pixel una colonna da 236 si mangerebbe un terzo dello schermo:
+   la barra torna in cima, orizzontale, com'era prima.
+
+   Questo blocco DEVE stare prima di quello a 620: sono due media query della
+   stessa forza, e a parità di forza vince l'ultima scritta. Appeso in fondo al
+   foglio per comodità, rimetterebbe la barra di lato proprio sui telefoni.
+
+   Larghezza e altezza dell'elemento si riscrivono a mano invece di riusare le
+   variabili: quelle dicono quanto spazio la barra ruba al CONTENUTO, e solo in
+   colonna quel numero coincide con la dimensione della barra. È lo stesso
+   equivoco che aveva reso inservibile la vecchia --barra-h. */
+@media (max-width: 820px) {
+  :root { --barra-w: 0px; --barra-alta-h: 62px; }
+
+  #topbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 0 18px;
+    width: auto;
+    height: var(--barra-alta-h);
+    position: sticky;
+    inset: auto;
+    top: 0;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(217,164,65,.35);
+  }
+  .brand { margin: 0; }
+
+  /* In riga le voci non ci stanno tutte: si stringono e scorrono di lato.
+     La barra di scorrimento è nascosta, quindi la sfumatura sul bordo destro
+     è l'unico segnale che a destra c'è dell'altro. */
+  .tabs {
+    flex-direction: row;
+    align-items: stretch;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  }
+  .tabs-servizi { flex: none; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+
+  .tab {
+    padding: 0 14px;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+  }
+  .tab:hover { background: none; }
+  .tab.attiva { border-left-color: transparent; border-bottom-color: var(--rosa); background: none; }
+}
+
 @media (max-width: 620px) {
-  :root { --barra-h: 52px; }
+  :root { --barra-alta-h: 52px; }
   .pagina { padding: 22px 15px 60px; }
   .pagina h1 { font-size: 23px; }
   .msg { max-width: 92%; }
@@ -1461,6 +1542,10 @@ a.btn { text-decoration: none; display: inline-block; }
   .marchio { height: 34px; width: 34px; border-radius: 9px; }
   .brand { display: none; }
   .tab { padding: 0 10px; font-size: 13px; }
-  .menu-nome { display: none; }
-  .menu-segno { display: inline; }
+  /* Stesso motivo: sul telefono le parole delle due voci di servizio rubano
+     spazio alle sezioni vere, e resta il solo segno. Il ⋯ del Profilo è lo
+     stesso che apriva il menu con email, password e uscita — dietro ci si
+     ritrovano le stesse cose. */
+  .tabs-servizi .tab-nome { display: none; }
+  .tabs-servizi .tab-segno { font-size: 17px; }
 }

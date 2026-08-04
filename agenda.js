@@ -1,8 +1,8 @@
 // L'agenda del centro: la vista giornaliera divisa per operatrice o per
-// cabina, con settimana e mese. Il guscio (accesso, tab, menu) sta in app.js:
-// qui si dà per scontato che ci sia già un centro aperto in `stato`.
+// cabina, con settimana e mese. Il guscio (accesso, barra, rotte) sta in
+// app.js: qui si dà per scontato che ci sia già un centro aperto in `stato`.
 
-import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=14";
+import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=15";
 
 const SLOT_H = 46;                 // deve combaciare con --slot-h nel CSS
 const PX_MIN = SLOT_H / 30;
@@ -214,18 +214,35 @@ function agganciaBarra() {
   });
 
   // Le intestazioni delle colonne devono fermarsi sotto la testata, che cambia
-  // altezza a seconda della vista: la si misura invece di indovinarla. Anche
-  // la barra in alto si misura, così cambiarne l'altezza nel CSS non lascia
-  // la griglia disallineata.
-  const t = document.querySelector(".testata");
-  if (t) {
-    const barra = document.getElementById("topbar")?.getBoundingClientRect().height ?? 62;
-    document.documentElement.style.setProperty(
-      "--testata-h", `${Math.round(t.getBoundingClientRect().height + barra)}px`);
-  }
+  // altezza a seconda della vista: la si misura invece di indovinarla.
+  misuraTestata();
 
   agganciaRicerca();
 }
+
+// Il bordo BASSO della testata e' per definizione il pixel in cui comincia la
+// griglia. Misurare quello, invece di sommare l'altezza della testata a quella
+// della barra, e' l'unica forma che non dipende da dove sta la barra: vale
+// barra+testata quando e' in cima e solo testata quando e' di lato, senza che
+// questo file debba saperne niente.
+function misuraTestata() {
+  const t = document.querySelector(".testata");
+  if (!t) return;
+  document.documentElement.style.setProperty(
+    "--testata-h", `${Math.round(t.getBoundingClientRect().bottom)}px`);
+}
+
+// Attraversando la soglia in cui la barra cambia lato, la testata si sposta e
+// cambia altezza senza che l'agenda si ridisegni: senza questo la griglia resta
+// troppo corta (fascia vuota in fondo) o troppo lunga (ultima ora tagliata)
+// finche' non si tocca qualcos'altro. Registrato qui una volta sola: dentro
+// agganciaBarra se ne accumulerebbe uno a ogni cambio di giorno.
+let misuraInCoda = false;
+window.addEventListener("resize", () => {
+  if (misuraInCoda) return;
+  misuraInCoda = true;
+  requestAnimationFrame(() => { misuraInCoda = false; misuraTestata(); });
+});
 
 // Calendario a tendina: si disegna qui invece di usare quello di sistema, che
 // su desktop e mobile ha aspetti diversi e non si puo' allineare al resto.
@@ -473,7 +490,12 @@ function disegnaSettimana(dati, da) {
       <span class="nn">${daIso(g).getDate()}</span>
     </div>`).join("");
 
-  const css = `grid-template-columns: 62px repeat(7, minmax(120px, 1fr))`;
+  // 100 e non 120: con la barra di lato la soglia oltre la quale la settimana
+  // entra tutta a schermo passerebbe da 902 a 1138 pixel, e su un portatile da
+  // 13 pollici la domenica finirebbe fuori. Sopra i 1138 non cambia niente —
+  // 1fr continua ad allargare le colonne — si sposta solo il punto in cui
+  // compare lo scorrimento di lato.
+  const css = `grid-template-columns: 62px repeat(7, minmax(100px, 1fr))`;
   const q = dati.appuntamenti.length;
 
   app.innerHTML = `
