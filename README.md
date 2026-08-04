@@ -1,22 +1,40 @@
-# SV Agenda
+# Salone Vincente
 
-Agenda per centri estetici. Vista giornaliera divisa per cabina, come il
-gestionale che il centro apre ogni mattina.
+Il sito unico dei centri: agenda, chat delle clienti, corsi e assistente
+nello stesso posto. Un centro entra una volta sola.
 
-Parte del progetto **SV Platform**: condivide database e accesso con
-[SV Academy](https://github.com/mach10account/sv-academy), quindi un centro
-entra una volta sola.
+Prima erano due siti separati (SV Agenda e SV Academy) sullo stesso database
+e con lo stesso accesso: il centro doveva ricordarsi due indirizzi. Adesso
+sono quattro tab della stessa barra.
+
+## Le tab
+
+| tab | chi la vede | cosa contiene |
+|---|---|---|
+| Agenda | chi è collegato a un centro | la giornata divisa per operatrice o per cabina, più settimana e mese |
+| Conversazioni | solo la titolare | le chat WhatsApp delle clienti col bot, e una chat di prova |
+| Corsi | chi ha almeno un corso attivo | catalogo, lezioni, video |
+| Assistente | chi ha almeno un corso attivo | la chat sui contenuti dei corsi |
+
+Le tab non vengono nascoste dopo essere state disegnate: si disegnano solo
+quelle a cui quella persona ha davvero accesso. Chi apre una rotta che non gli
+spetta atterra sulla sua prima tab, non su un errore.
+
+Integrazioni, cambio password e uscita stanno nel menu in alto a destra.
 
 ## Come è fatto
 
 - **Frontend**: statico, nessuna compilazione. Supabase JS da CDN.
-- **Dati**: Supabase, schema `crm`. Tutti i centri stanno nello stesso
-  database; a separarli sono le regole di accesso, non tabelle distinte.
-- **API**: funzioni in `public` (`crm_agenda_giorno`, `crm_salva_appuntamento`,
-  …). Lo schema `crm` non è raggiungibile via API: le tabelle si toccano solo
-  attraverso quelle funzioni.
+- **Dati**: Supabase, schemi `crm` (agenda, clienti, WhatsApp) e `academy`
+  (corsi, lezioni, progressi). Nessuno dei due è raggiungibile via API: si
+  passa solo dalle funzioni in `public` (`crm_agenda_giorno`,
+  `academy_my_catalog`, …).
+- **Video**: Bunny Stream. L'URL del player lo emette la edge function
+  `lesson-video` dopo aver verificato l'iscrizione, firmato e con scadenza a
+  30 minuti. L'email di chi guarda è sovrapposta al player.
+- **Assistente**: edge function `academy-chat`, risposte in streaming.
 
-## Le due regole che reggono tutto
+## Le due regole che reggono l'agenda
 
 **Ogni riga porta il centro a cui appartiene**, e le policy filtrano su quello.
 Un utente del centro A non riceve un "non autorizzato" quando chiede i dati del
@@ -28,23 +46,40 @@ stessa cabina — o sulla stessa operatrice — anche con due tablet che salvano
 nello stesso istante. Il frontend non fa nessun controllo: si limita a tradurre
 il rifiuto in *"Cabina 1 è già occupata dalle 09:00 alle 10:00"*.
 
-## Orari
-
-Salvati sempre con il fuso (`timestamptz`), mai come testo. La conversione tra
-"3 agosto, ore 15:00 nel centro" e l'istante assoluto avviene **nel database**,
-non nel browser: un tablet con il fuso impostato male non può creare
-appuntamenti all'ora sbagliata.
+Gli orari sono salvati sempre con il fuso (`timestamptz`), mai come testo. La
+conversione tra "3 agosto, ore 15:00 nel centro" e l'istante assoluto avviene
+**nel database**, non nel browser: un tablet con il fuso impostato male non può
+creare appuntamenti all'ora sbagliata.
 
 ## File
 
 | file | contenuto |
 |---|---|
-| `index.html` | struttura di base |
-| `app.js` | login, griglia, pannelli, spostamento |
+| `index.html` | barra, tab, contenitore |
+| `app.js` | accesso, tab, menu, rotte |
+| `core.js` | collegamento a Supabase e stato condiviso |
+| `agenda.js` | griglia, pannelli, spostamento |
+| `conversazioni.js` | chat delle clienti e prova del bot |
+| `academy.js` | catalogo, lezioni, player |
+| `assistente.js` | chat sui contenuti dei corsi |
+| `integrazioni.js` | collegamento di WhatsApp Business |
 | `styles.css` | stile |
 
-Il numero di versione in coda a `app.js?v=N` va alzato a ogni pubblicazione:
-senza, i browser tengono la versione precedente per dieci minuti.
+## Pubblicare
+
+I browser tengono i file per dieci minuti: senza cambiare il numero di
+versione i centri continuerebbero a usare quella precedente. Il numero compare
+in `index.html` **e in cima a ogni import**, e va alzato dappertutto insieme —
+se `app.js` è nuovo e `agenda.js` è vecchio, i due lavorano su due `stato`
+diversi. Un comando solo:
+
+```bash
+grep -rl '?v=12' . --include='*.js' --include='*.html' | xargs sed -i '' 's/?v=12/?v=13/g'
+```
+
+Il vecchio indirizzo dell'Academy (`mach10account.github.io/sv-academy`) è
+diventato una pagina di rimbalzo che porta qui conservando la parte dopo il #:
+i link a lezioni e i recuperi password già mandati continuano a funzionare.
 
 Nel repository non ci sono segreti: la sola chiave presente è quella
 publishable di Supabase, protetta lato database dalle policy.

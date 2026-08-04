@@ -3,26 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SV Agenda</title>
+  <title>Salone Vincente</title>
   <!-- Il numero di versione va alzato a ogni pubblicazione: senza, i browser
        tengono la versione vecchia per dieci minuti. -->
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <header id="topbar" hidden>
-    <span class="brand">SV Agenda</span>
-    <span id="centro" class="centro"></span>
+    <span class="brand">Salone Vincente</span>
+    <nav id="tabs" class="tabs"></nav>
     <div class="spacer"></div>
-    <span id="who" class="who"></span>
-    <button id="conversazioni" class="btn-ghost" hidden>Conversazioni</button>
-    <button id="integrazioni" class="btn-ghost" hidden>Integrazioni</button>
-    <button id="logout" class="btn-ghost">Esci</button>
+    <div class="menu-wrap">
+      <button id="menu" class="btn-ghost"></button>
+      <div id="menu-voci" class="menu-voci" hidden></div>
+    </div>
   </header>
 
   <main id="app">
     <div class="loading">Caricamento…</div>
   </main>
 
-  <script type="module" src="app.js?v=11"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>
