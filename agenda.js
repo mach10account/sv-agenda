@@ -2,7 +2,7 @@
 // cabina, con settimana e mese. Il guscio (accesso, tab, menu) sta in app.js:
 // qui si dà per scontato che ci sia già un centro aperto in `stato`.
 
-import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=12";
+import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=13";
 
 const SLOT_H = 46;                 // deve combaciare con --slot-h nel CSS
 const PX_MIN = SLOT_H / 30;
@@ -214,11 +214,14 @@ function agganciaBarra() {
   });
 
   // Le intestazioni delle colonne devono fermarsi sotto la testata, che cambia
-  // altezza a seconda della vista: la si misura invece di indovinarla.
+  // altezza a seconda della vista: la si misura invece di indovinarla. Anche
+  // la barra in alto si misura, così cambiarne l'altezza nel CSS non lascia
+  // la griglia disallineata.
   const t = document.querySelector(".testata");
   if (t) {
+    const barra = document.getElementById("topbar")?.getBoundingClientRect().height ?? 62;
     document.documentElement.style.setProperty(
-      "--testata-h", `${Math.round(t.getBoundingClientRect().height + 54)}px`);
+      "--testata-h", `${Math.round(t.getBoundingClientRect().height + barra)}px`);
   }
 
   agganciaRicerca();

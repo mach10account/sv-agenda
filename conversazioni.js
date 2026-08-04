@@ -5,7 +5,7 @@
 // Qui è una tab e non più un pannello: è un posto dove la titolare torna, e
 // una chat dentro una finestrella sopra l'agenda non si legge.
 
-import { sb, app, stato, esc, erroreBox, SUPABASE_URL, SUPABASE_KEY } from "./core.js?v=12";
+import { sb, app, stato, esc, erroreBox, SUPABASE_URL, SUPABASE_KEY } from "./core.js?v=13";
 
 const PROVA_FINTA = { id: null, prova: true, nome: "Prova il bot", stato: "bot" };
 

@@ -2,7 +2,7 @@
 // Resta un pannello e non una tab: è una cosa che la titolare fa una volta,
 // non un posto dove torna ogni giorno.
 
-import { sb, stato, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from "./core.js?v=12";
+import { sb, stato, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from "./core.js?v=13";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare

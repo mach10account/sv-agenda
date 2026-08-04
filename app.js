@@ -6,12 +6,12 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc } from "./core.js?v=12";
-import { mostraAgenda } from "./agenda.js?v=12";
-import { mostraConversazioni } from "./conversazioni.js?v=12";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=12";
-import { mostraAssistente } from "./assistente.js?v=12";
-import { apriIntegrazioni } from "./integrazioni.js?v=12";
+import { sb, app, stato, esc } from "./core.js?v=13";
+import { mostraAgenda } from "./agenda.js?v=13";
+import { mostraConversazioni } from "./conversazioni.js?v=13";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=13";
+import { mostraAssistente } from "./assistente.js?v=13";
+import { apriIntegrazioni } from "./integrazioni.js?v=13";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -20,6 +20,18 @@ const topbar = document.getElementById("topbar");
 const barraTab = document.getElementById("tabs");
 const bottoneMenu = document.getElementById("menu");
 const menu = document.getElementById("menu-voci");
+
+// Il logo è un'immagine, il nome accanto è testo. Se l'immagine non arriva
+// (file mancante, rete a scatti) sparisce e resta il nome: un riquadro rotto
+// in cima alla pagina è peggio di nessuna immagine.
+const marchio = document.getElementById("marchio");
+marchio.addEventListener("error", () => { marchio.hidden = true; });
+
+// Lo stesso marchio, grande, sopra le schermate di accesso.
+const MARCHIO_GRANDE =
+  `<img class="marchio-grande" src="logo.png?v=13" alt="Estetista Indipendente"
+        onerror="this.remove()">
+   <h1 class="titolo-marchio"><b>Estetista</b><i>Indipendente</i></h1>`;
 
 let recovering = false;   // true mentre si sta impostando la password dal link
 let pulizia = null;       // cosa spegnere uscendo dalla sezione corrente
@@ -51,7 +63,7 @@ function renderLogin(messaggio = "") {
   topbar.hidden = true;
   app.innerHTML = `
     <div class="login">
-      <h1>Salone Vincente</h1>
+      ${MARCHIO_GRANDE}
       <p class="sub">Accedi con le credenziali del tuo centro.</p>
       ${messaggio}
       <form id="f">
@@ -91,6 +103,7 @@ function renderRecover() {
   topbar.hidden = true;
   app.innerHTML = `
     <div class="login">
+      ${MARCHIO_GRANDE}
       <h1>Password dimenticata</h1>
       <p class="sub">Scrivi la tua email oppure il numero di telefono:<br>
          ti mandiamo il link su WhatsApp.</p>
@@ -122,6 +135,7 @@ function renderRecover() {
 
     app.innerHTML = `
       <div class="login">
+        ${MARCHIO_GRANDE}
         <h1>Controlla WhatsApp</h1>
         <p class="sub">Se il recapito è registrato, ti arriva un messaggio col link
            per impostare la nuova password.</p>

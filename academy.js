@@ -2,7 +2,7 @@
 // dentro il sito unico; le rotte #/corso/<slug> e #/lezione/<id> sono rimaste
 // identiche perché in giro ci sono link già mandati ai centri.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=12";
+import { sb, app, stato, esc, pagina } from "./core.js?v=13";
 
 // Le descrizioni arrivano da GHL come HTML. Teniamo solo il minimo:
 // niente script, niente attributi, e i link si aprono in una scheda nuova.
@@ -82,7 +82,7 @@ export function mostraCorsi() {
 
   app.innerHTML = pagina(`
     <h1>I tuoi corsi</h1>
-    <p class="sub">Formazione Salone Vincente</p>
+    <p class="sub">La tua formazione</p>
     ${accessible.length ? `<div class="grid">${accessible.map(card).join("")}</div>`
       : `<div class="notice">Non hai ancora corsi attivi. Scrivi al tuo consulente per l'accesso.</div>`}
     ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}`);

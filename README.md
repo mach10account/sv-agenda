@@ -1,4 +1,4 @@
-# Salone Vincente
+# Estetista Indipendente
 
 Il sito unico dei centri: agenda, chat delle clienti, corsi e assistente
 nello stesso posto. Un centro entra una volta sola.
@@ -21,6 +21,16 @@ quelle a cui quella persona ha davvero accesso. Chi apre una rotta che non gli
 spetta atterra sulla sua prima tab, non su un errore.
 
 Integrazioni, cambio password e uscita stanno nel menu in alto a destra.
+
+## Il marchio
+
+Il logo è `logo.png`, ed è lui a dare i colori a tutto il resto: il rosa della
+scritta (`--rosa`), l'oro del filetto (`--oro`), il nero della sagoma
+(`--ink`). Da qui la barra in alto è **bianca** e non scura: il logo ha lo
+sfondo bianco e su una fascia colorata si vedrebbe il rettangolo.
+
+Se il file manca, al suo posto compare il nome scritto: meglio di un riquadro
+rotto in cima alla pagina.
 
 ## Come è fatto
 
