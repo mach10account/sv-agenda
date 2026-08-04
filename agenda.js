@@ -2,7 +2,7 @@
 // cabina, con settimana e mese. Il guscio (accesso, tab, menu) sta in app.js:
 // qui si dà per scontato che ci sia già un centro aperto in `stato`.
 
-import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=13";
+import { sb, app, stato, esc, erroreBox, pannello } from "./core.js?v=14";
 
 const SLOT_H = 46;                 // deve combaciare con --slot-h nel CSS
 const PX_MIN = SLOT_H / 30;

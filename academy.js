@@ -2,7 +2,7 @@
 // dentro il sito unico; le rotte #/corso/<slug> e #/lezione/<id> sono rimaste
 // identiche perché in giro ci sono link già mandati ai centri.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=13";
+import { sb, app, stato, esc, pagina } from "./core.js?v=14";
 
 // Le descrizioni arrivano da GHL come HTML. Teniamo solo il minimo:
 // niente script, niente attributi, e i link si aprono in una scheda nuova.

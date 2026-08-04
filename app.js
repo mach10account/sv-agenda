@@ -6,12 +6,12 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc } from "./core.js?v=13";
-import { mostraAgenda } from "./agenda.js?v=13";
-import { mostraConversazioni } from "./conversazioni.js?v=13";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=13";
-import { mostraAssistente } from "./assistente.js?v=13";
-import { apriIntegrazioni } from "./integrazioni.js?v=13";
+import { sb, app, stato, esc } from "./core.js?v=14";
+import { mostraAgenda } from "./agenda.js?v=14";
+import { mostraConversazioni } from "./conversazioni.js?v=14";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=14";
+import { mostraAssistente } from "./assistente.js?v=14";
+import { apriIntegrazioni } from "./integrazioni.js?v=14";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -29,7 +29,7 @@ marchio.addEventListener("error", () => { marchio.hidden = true; });
 
 // Lo stesso marchio, grande, sopra le schermate di accesso.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=13" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=14" alt="Estetista Indipendente"
         onerror="this.remove()">
    <h1 class="titolo-marchio"><b>Estetista</b><i>Indipendente</i></h1>`;
 

@@ -84,7 +84,7 @@ se `app.js` è nuovo e `agenda.js` è vecchio, i due lavorano su due `stato`
 diversi. Un comando solo:
 
 ```bash
-grep -rl '?v=12' . --include='*.js' --include='*.html' | xargs sed -i '' 's/?v=12/?v=13/g'
+grep -rl '?v=14' . --include='*.js' --include='*.html' | xargs sed -i '' 's/?v=14/?v=15/g'
 ```
 
 Il vecchio indirizzo dell'Academy (`mach10account.github.io/sv-academy`) è

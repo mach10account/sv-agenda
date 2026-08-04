@@ -2,7 +2,7 @@
 // Resta un pannello e non una tab: è una cosa che la titolare fa una volta,
 // non un posto dove torna ogni giorno.
 
-import { sb, stato, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from "./core.js?v=13";
+import { sb, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pannello } from "./core.js?v=14";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare
@@ -82,12 +82,12 @@ export async function apriIntegrazioni() {
     sb.rpc("crm_wa_stato", { p_centro: stato.centro.id }),
     sb.rpc("crm_wa_config"),
   ]);
-  const stato = statoRes.data;
+  const wa = statoRes.data;
   const cfg = cfgRes.data;
 
-  if (statoRes.error || !stato?.ok) {
+  if (statoRes.error || !wa?.ok) {
     box.innerHTML = `<div class="scheda-testa"><h2>Integrazioni</h2></div>
-      ${erroreBox(statoRes.error?.message || stato?.errore || "Non disponibile")}
+      ${erroreBox(statoRes.error?.message || wa?.errore || "Non disponibile")}
       <button class="btn btn-wide chiudi">Chiudi</button>`;
     box.querySelector(".chiudi").onclick = chiudi;
     return;
@@ -96,25 +96,25 @@ export async function apriIntegrazioni() {
   disegna();
 
   function disegna(messaggio = "") {
-    const collegato = stato.stato === "collegato";
+    const collegato = wa.stato === "collegato";
     box.innerHTML = `
       <div class="scheda-testa"><h2>Integrazioni</h2></div>
       ${messaggio ? erroreBox(messaggio) : ""}
-      ${stato.errore ? erroreBox(stato.errore) : ""}
+      ${wa.errore ? erroreBox(wa.errore) : ""}
       <div class="integrazione">
         <div class="integrazione-testa">
           <strong>WhatsApp Business</strong>
-          <span class="badge-stato ${collegato ? "on" : "off"}">${collegato ? "Collegato" : "Non collegato"}</span>
+          <span class="badge-wa ${collegato ? "on" : "off"}">${collegato ? "Collegato" : "Non collegato"}</span>
         </div>
         <p class="quando">${collegato
-          ? `Numero ${esc(stato.numero || "collegato")}. Le clienti scrivono come sempre;
+          ? `Numero ${esc(wa.numero || "collegato")}. Le clienti scrivono come sempre;
              tu continui a rispondere dal telefono quando vuoi.`
           : `Collega il numero WhatsApp del centro: le richieste delle clienti
              finiscono in agenda da sole. Continuerai a usare WhatsApp dal
              telefono come fai adesso.`}</p>
         ${collegato ? `
           <label class="riga-switch">
-            <input type="checkbox" id="wa-bot" ${stato.bot_attivo ? "checked" : ""}>
+            <input type="checkbox" id="wa-bot" ${wa.bot_attivo ? "checked" : ""}>
             <span>Risposte automatiche attive</span>
           </label>
           <button class="btn-secondario" id="wa-scollega">Scollega</button>
@@ -142,7 +142,7 @@ export async function apriIntegrazioni() {
         interruttore.checked = !attivo;
         return disegna(error?.message || data?.errore || "Non riuscito");
       }
-      stato.bot_attivo = attivo;
+      wa.bot_attivo = attivo;
     };
 
     const scollega = box.querySelector("#wa-scollega");
@@ -155,9 +155,9 @@ export async function apriIntegrazioni() {
         scollega.textContent = "Scollega";
         return disegna(error?.message || data?.errore || "Non riuscito");
       }
-      stato.stato = "non_collegato";
-      stato.numero = null;
-      stato.errore = null;
+      wa.stato = "non_collegato";
+      wa.numero = null;
+      wa.errore = null;
       disegna();
     };
   }
@@ -197,10 +197,10 @@ export async function apriIntegrazioni() {
         bottone.textContent = "Collega WhatsApp Business";
         return disegna(esito?.errore || "Collegamento non riuscito");
       }
-      stato.stato = "collegato";
-      stato.numero = esito.numero;
-      stato.bot_attivo = true;
-      stato.errore = null;
+      wa.stato = "collegato";
+      wa.numero = esito.numero;
+      wa.bot_attivo = true;
+      wa.errore = null;
       disegna();
     } catch (e) {
       bottone.disabled = false;
