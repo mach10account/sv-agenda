@@ -7,7 +7,7 @@
 // non resta un modale orfano di cui nessuno sa niente. Stessa strada già fatta
 // dalle conversazioni.
 
-import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pagina } from "./core.js?v=15";
+import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, erroreBox, pagina } from "./core.js?v=16";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare

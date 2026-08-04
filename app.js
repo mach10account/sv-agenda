@@ -7,12 +7,12 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=15";
-import { mostraAgenda } from "./agenda.js?v=15";
-import { mostraConversazioni } from "./conversazioni.js?v=15";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=15";
-import { mostraAssistente } from "./assistente.js?v=15";
-import { mostraIntegrazioni } from "./integrazioni.js?v=15";
+import { sb, app, stato, esc, pagina } from "./core.js?v=16";
+import { mostraAgenda } from "./agenda.js?v=16";
+import { mostraConversazioni } from "./conversazioni.js?v=16";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=16";
+import { mostraAssistente } from "./assistente.js?v=16";
+import { mostraIntegrazioni } from "./integrazioni.js?v=16";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -21,17 +21,25 @@ const topbar = document.getElementById("topbar");
 const barraTab = document.getElementById("tabs");
 const barraServizi = document.getElementById("tabs-servizi");
 
-// Il logo è un'immagine, il nome accanto è testo. Se l'immagine non arriva
-// (file mancante, rete a scatti) sparisce e resta il nome: un riquadro rotto
-// in cima alla pagina è peggio di nessuna immagine.
-const marchio = document.getElementById("marchio");
-marchio.addEventListener("error", () => { marchio.hidden = true; });
+// Il nome è dentro l'immagine, quindi accanto non si scrive. Ma se l'immagine
+// non arriva (file mancante, rete a scatti) sparisce e il nome scritto prende
+// il suo posto: un riquadro rotto in cima alla pagina è peggio di nessuna
+// immagine, e una barra senza niente in cima è peggio di tutte e due.
+// Sono due: quello intero per la colonna e il solo emblema per la riga. Se
+// uno dei due non arriva li si spegne entrambi e torna il nome scritto — meglio
+// nessuna immagine che una a metà.
+document.querySelectorAll(".marchio").forEach((m) => {
+  m.addEventListener("error", () => { topbar.classList.add("senza-marchio"); });
+});
 
-// Lo stesso marchio, grande, sopra le schermate di accesso.
+// Lo stesso marchio, grande, sopra le schermate di accesso. Il nome scritto
+// c'e' ancora ma sta nascosto: dentro l'immagine e' gia' scritto, e ripeterlo
+// sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
+// di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=15" alt="Estetista Indipendente"
-        onerror="this.remove()">
-   <h1 class="titolo-marchio"><b>Estetista</b><i>Indipendente</i></h1>`;
+  `<img class="marchio-grande" src="logo.png?v=16" alt="Estetista Indipendente"
+        onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
+   <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 
 let recovering = false;   // true mentre si sta impostando la password dal link
 let caricando = false;    // true mentre boot() sta ancora chiedendo centri e corsi

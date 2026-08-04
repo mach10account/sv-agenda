@@ -83,27 +83,35 @@ body {
    entra, e l'ultima che vede chi sviluppa, che è già dentro. */
 #topbar:not([hidden]) + #app { margin-left: var(--barra-w); }
 
-/* Il logo ha lo sfondo scuro, la barra è chiara: sta come una piastrella
-   arrotondata, che è come lo si legge sul telefono. La scritta accanto
-   ripete il marchio in grande, perché a 44 pixel le parole dentro
-   l'immagine non si leggono. */
-.marchio {
-  height: 44px;
-  width: 44px;
-  flex: none;
-  display: block;
-  border-radius: 12px;
-  object-fit: cover;
-}
-.marchio[hidden] { display: none; }
+/* In colonna il marchio ci sta per intero, scritta compresa: niente più
+   piastrella arrotondata e niente ritaglio, l'immagine è trasparente e si
+   appoggia sul bianco della barra. */
+.marchio { flex: none; object-fit: contain; }
 
+/* In colonna si vede quello intero, in riga il solo emblema: a scegliere è il
+   CSS, cioè l'unica cosa che ricalcola a ogni cambio di larghezza. */
+.marchio-intero {
+  display: block;
+  width: 100%;
+  max-width: 186px;
+  height: auto;
+  margin: 0 auto 14px;
+}
+.marchio-segno { display: none; }
+#topbar.senza-marchio .marchio { display: none; }
+
+/* Il nome scritto è dentro l'immagine: ripeterlo accanto sarebbe un doppione.
+   Resta nel markup come ripiego e ricompare se l'immagine non arriva — un
+   riquadro rotto in cima alla pagina è peggio di nessuna immagine, ma una
+   barra senza niente in cima è peggio di tutte e due. */
 .brand {
-  display: flex;
+  display: none;
   flex-direction: column;
   line-height: 1.1;
   white-space: nowrap;
   margin: 0 0 10px 4px;
 }
+#topbar.senza-marchio .brand { display: flex; }
 .brand b {
   font-size: 17px;
   font-weight: 700;
@@ -198,6 +206,10 @@ body {
   align-items: center;
   gap: 3px;
 }
+/* Il display:flex qui sopra batte il display:none che il browser dà da solo
+   agli elementi con [hidden]: senza questa riga il nome resterebbe scritto
+   anche sotto al logo, che lo contiene già. */
+.titolo-marchio[hidden] { display: none; }
 .titolo-marchio b { font-size: 25px; color: var(--rosa); font-weight: 700; }
 .titolo-marchio i {
   font-style: normal;
@@ -208,14 +220,15 @@ body {
   color: var(--oro);
 }
 
+/* Sull'accesso il marchio sta da solo e in grande: è lui a dire dove sei.
+   Trasparente, quindi niente riquadro e niente ombra — l'ombra disegnerebbe un
+   rettangolo attorno a un'immagine che un rettangolo non ce l'ha. */
 .marchio-grande {
   display: block;
-  width: 148px;
-  height: 148px;
-  object-fit: cover;
-  border-radius: 24px;
-  margin: 0 auto 16px;
-  box-shadow: 0 8px 24px rgba(36,26,32,.18);
+  width: 230px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 18px;
 }
 .login .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
 .login input {
@@ -1506,7 +1519,11 @@ a.btn { text-decoration: none; display: inline-block; }
     border-bottom: 1px solid var(--line);
     box-shadow: 0 1px 0 rgba(217,164,65,.35);
   }
-  .brand { margin: 0; }
+  /* In riga torna l'emblema quadrato, e con lui il nome scritto accanto: qui
+     non è più un doppione, perché nell'emblema la scritta non c'è. */
+  .marchio-intero { display: none; }
+  .marchio-segno { display: block; width: 44px; height: 44px; margin: 0; }
+  .brand { display: flex; margin: 0; }
 
   /* In riga le voci non ci stanno tutte: si stringono e scorrono di lato.
      La barra di scorrimento è nascosta, quindi la sfumatura sul bordo destro
@@ -1538,8 +1555,8 @@ a.btn { text-decoration: none; display: inline-block; }
   .pagina h1 { font-size: 23px; }
   .msg { max-width: 92%; }
   #topbar { padding: 0 10px; gap: 10px; }
-  /* Resta la piastrella: il nome scritto ruberebbe spazio alle tab. */
-  .marchio { height: 34px; width: 34px; border-radius: 9px; }
+  /* Resta il solo emblema: il nome scritto ruberebbe spazio alle voci. */
+  .marchio-segno { height: 34px; width: 34px; }
   .brand { display: none; }
   .tab { padding: 0 10px; font-size: 13px; }
   /* Stesso motivo: sul telefono le parole delle due voci di servizio rubano

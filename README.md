@@ -33,14 +33,26 @@ alle sezioni vere.
 
 ## Il marchio
 
-Il logo è `logo.png`, ed è lui a dare i colori a tutto il resto: il rosa della
-scritta (`--rosa`), l'oro del filetto (`--oro`), il nero della sagoma
-(`--ink`). Da qui la barra è **bianca** e non scura: il logo ha lo sfondo
-bianco e su una fascia colorata si vedrebbe il rettangolo. Il filetto oro che
-la chiude, come nel logo, sta sul bordo destro quando è in colonna e sul bordo
-basso quando è in cima.
+Il logo dà i colori a tutto il resto: il rosa della scritta (`--rosa`), l'oro
+del filetto (`--oro`), il nero della sagoma (`--ink`). Da qui la barra è
+**bianca** e non scura: su una fascia colorata si vedrebbe il riquadro attorno
+al disegno. Il filetto oro che la chiude, come nel logo, sta sul bordo destro
+quando la barra è in colonna e sul bordo basso quando è in cima.
 
-Se il file manca, al suo posto compare il nome scritto: meglio di un riquadro
+Sono **due file**, non due ritagli dello stesso:
+
+| file | dove si vede |
+|---|---|
+| `logo.png` | marchio intero, scritta compresa — barra in colonna e schermate di accesso |
+| `icona.png` | solo l'emblema — barra in riga sotto gli 820px, e favicon |
+
+A 44 pixel la scritta dentro il marchio intero non si leggerebbe, per questo in
+riga si passa all'emblema. A scegliere fra i due è il CSS e non `<picture>`: il
+browser sceglie la sorgente di `<picture>` una volta sola e non la riscambia
+quando la finestra cambia larghezza, quindi un tablet ruotato si terrebbe
+l'immagine sbagliata fino al ricaricamento.
+
+Se le immagini non arrivano compare il nome scritto: meglio di un riquadro
 rotto in cima alla pagina.
 
 ## Come è fatto
