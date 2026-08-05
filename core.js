@@ -2,7 +2,20 @@
 // collegamento a Supabase, chi è entrato e quali sono i suoi centri.
 // Tutto il resto vive dentro la sua sezione.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// jsDelivr e non esm.sh, e una versione fissa e non "@2".
+//
+// Il 5/8/2026 il sito è rimasto appeso su "Caricamento…" per mezz'ora: esm.sh
+// aveva pubblicato una build monca di supabase-js 2.112.1 — il modulo di
+// ingresso rispondeva 200 e i suoi tre pezzi (auth, postgrest, realtime) 404.
+// Un import che non si completa non solleva un errore: resta lì. Quindi niente
+// login, niente pagina, niente messaggio — la schermata di attesa e basta,
+// all'infinito, senza una riga in console che spiegasse perché.
+//
+// "@2" voleva dire "sempre l'ultima": chi decideva cosa girava sul sito delle
+// titolari era chi pubblicava su npm, e la prima a saperlo era la titolare che
+// non riusciva più a entrare. Adesso la versione la si cambia a mano, dopo
+// averla provata. Stessa scelta già fatta su manager-stats.
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.1/+esm";
 
 export const SUPABASE_URL = "https://hypkwdvvrmakqrowbkqw.supabase.co";
 export const SUPABASE_KEY = "sb_publishable_y0_DEhM-bC37jEKkiC_GGQ_TaWvPqVe";
