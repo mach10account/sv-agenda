@@ -15,7 +15,7 @@
 // pagina. Per questo dopo il giro su Meta non si ritocca niente a mano: si
 // rilegge e si ridisegna da capo.
 
-import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, avvisoBox, erroreBox, pagina, pannello } from "./core.js?v=18";
+import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, avvisoBox, erroreBox, pagina, pannello } from "./core.js?v=19";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare
@@ -36,11 +36,31 @@ let esitoPendente = null; // {testo, avviso} arrivato mentre la titolare era alt
 const ATTESA_CONNESSIONE = 20000;
 
 // WhatsApp Manager di Meta: da lì si cambiano nome, foto e orari del profilo,
-// cose che noi non replichiamo e che non ha senso duplicare. L'indirizzo è
-// quello generico e non punta alla WABA del centro di proposito: l'id della
-// WABA nel browser non ci arriva e non ci deve arrivare, e Meta riconosce da
-// sola di quale account si tratta dall'accesso della titolare.
-const WA_MANAGER = "https://business.facebook.com/wa/manage/";
+// cose che noi non replichiamo e che non ha senso duplicare.
+//
+// L'indirizzo va detto per intero. Prima si apriva quello generico, convinti
+// che "Meta riconosce da sola di quale account si tratta dall'accesso della
+// titolare": non lo fa. Senza parametri apre il portfolio predefinito di chi ha
+// fatto l'accesso, che è quello giusto solo se ne ha uno solo — con due o più,
+// la titolare si trova davanti l'account di qualcun altro suo e giura che il
+// bottone è rotto. Aveva ragione.
+//
+//   asset_id    quale WABA aprire
+//   business_id in quale portfolio cercarla; senza, Meta la cerca nel
+//               predefinito e se non abita lì non la mostra
+//
+// business_id può mancare (Graph muto al momento del collegamento): in quel
+// caso si manda comunque asset_id, che porta a destinazione ogni volta che la
+// WABA sta nel portfolio predefinito. Il link nudo resta solo se manca pure la
+// WABA, cioè per un centro non collegato — dove questo bottone non si vede.
+const WA_MANAGER = "https://business.facebook.com/latest/whatsapp_manager/overview/";
+
+function linkManager(waba, business) {
+  if (!waba) return WA_MANAGER;
+  const q = new URLSearchParams({ asset_id: waba });
+  if (business) q.set("business_id", business);
+  return `${WA_MANAGER}?${q}`;
+}
 
 const ritardo = (ms) => new Promise((risolvi) => setTimeout(() => risolvi(null), ms));
 
@@ -261,7 +281,8 @@ export async function mostraIntegrazioni() {
     // Scheda nuova e non stessa finestra: il giro su Meta è lungo e la titolare
     // deve poter tornare qui senza rifare l'accesso e senza perdere di vista
     // quello che stava facendo.
-    scheda.querySelector("#wa-manager").onclick = () => window.open(WA_MANAGER, "_blank", "noopener");
+    scheda.querySelector("#wa-manager").onclick = () =>
+      window.open(linkManager(wa.waba_id, wa.business_id), "_blank", "noopener");
 
     const scollega = scheda.querySelector("#wa-scollega");
     scollega.onclick = async () => {
