@@ -1,0 +1,2005 @@
+:root {
+  /* I colori sono quelli del logo: il rosa della scritta, l'oro del filetto,
+     il nero della sagoma. Lo sfondo tira appena al rosa, non al grigio. */
+  --rosa: #d6497f;
+  --rosa-scuro: #b23a68;
+  --rosa-tenue: #fceff4;
+  --oro: #d9a441;
+  --oro-tenue: #fbf2df;
+  --ink: #241a20;
+  --muted: #85717b;
+  --line: #ecdfe5;
+  --bg: #fdfafb;
+  --ok: #2f8f6b;
+  --ok-bg: #e8f4ef;
+  --radius: 12px;
+
+  /* Quanto spazio si porta via la barra di navigazione. Sono due misure e non
+     una perché la barra cambia lato: in colonna a sinistra sopra gli 820px,
+     in cima sotto. Chi le legge — la testata dell'agenda, le conversazioni —
+     non deve sapere dov'è finita la barra, solo quanto gliene resta. In ogni
+     modalità una delle due è zero. */
+  --barra-w: 236px;
+  --barra-alta-h: 0px;
+
+  /* Altezza di uno slot da 30 minuti. Da qui deriva tutta la griglia. */
+  --slot-h: 46px;
+}
+
+/* Chi sta sopra a chi, ora che la barra è fissa e non più in flusso:
+   intestazioni 15 < testata 20 < barra 30 < pillola dello spostamento 40 <
+   velo 50. Il velo SOPRA la barra è voluto: con un pannello aperto la
+   navigazione non dev'essere cliccabile, altrimenti si cambia sezione e il velo
+   resta appeso sopra quella nuova.
+   Attenzione a leggere questi numeri: la testata ha uno z-index suo, quindi
+   sigilla i propri figli — il calendario a tendina e i risultati della ricerca
+   non salgono sopra il 20 per quanto grande sia il numero che hanno dentro. */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ------------------------------------------------------------- topbar */
+
+#topbar[hidden] { display: none; }
+
+/* Barra chiara, non scura: il logo ha lo sfondo bianco e su una fascia
+   colorata si vedrebbe il rettangolo. A dare il colore ci pensa il marchio,
+   più il filetto oro che chiude la barra come nel logo — che qui passa dal
+   bordo basso al bordo destro, ma resta.
+
+   Fissa e non appiccicata: un figlio del body alto quanto lo schermo con
+   position:sticky non dà nessuna garanzia utile, e fixed non crea contesti di
+   scorrimento nuovi. È questo che permette di non toccare nessuno dei quattro
+   elementi che si appiccicano già (testata, intestazioni, testa del pannello,
+   campo dell'assistente): il documento resta lo scorrevole, come prima. */
+#topbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 18px 12px;
+  width: var(--barra-w);
+  background: #fff;
+  color: var(--ink);
+  border-right: 1px solid var(--line);
+  box-shadow: 1px 0 0 rgba(217,164,65,.35);
+  position: fixed;
+  inset: 0 auto 0 0;
+  overflow-y: auto;
+  z-index: 30;
+}
+
+/* Il contenuto si sposta a destra di quanto occupa la barra — ma solo quando la
+   barra c'è. Il rientro si AGGIUNGE a barra visibile invece di toglierlo a barra
+   nascosta: così il caso di partenza è già giusto e non dipende da nessuna
+   regola. Se dipendesse, su un browser che non la capisce il riquadro
+   dell'accesso resterebbe spostato di mezza barra — la prima cosa che vede chi
+   entra, e l'ultima che vede chi sviluppa, che è già dentro. */
+#topbar:not([hidden]) + #app { margin-left: var(--barra-w); }
+
+/* In colonna il marchio ci sta per intero, scritta compresa: niente più
+   piastrella arrotondata e niente ritaglio, l'immagine è trasparente e si
+   appoggia sul bianco della barra. */
+.marchio { flex: none; object-fit: contain; }
+
+/* In colonna si vede quello intero, in riga il solo emblema: a scegliere è il
+   CSS, cioè l'unica cosa che ricalcola a ogni cambio di larghezza. */
+.marchio-intero {
+  display: block;
+  width: 100%;
+  max-width: 186px;
+  height: auto;
+  margin: 0 auto 14px;
+}
+.marchio-segno { display: none; }
+#topbar.senza-marchio .marchio { display: none; }
+
+/* Il nome scritto è dentro l'immagine: ripeterlo accanto sarebbe un doppione.
+   Resta nel markup come ripiego e ricompare se l'immagine non arriva — un
+   riquadro rotto in cima alla pagina è peggio di nessuna immagine, ma una
+   barra senza niente in cima è peggio di tutte e due. */
+.brand {
+  display: none;
+  flex-direction: column;
+  line-height: 1.1;
+  white-space: nowrap;
+  margin: 0 0 10px 4px;
+}
+#topbar.senza-marchio .brand { display: flex; }
+.brand b {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--rosa);
+  letter-spacing: .2px;
+}
+.brand i {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--oro);
+}
+/* Il vuoto che tiene Integrazioni e Profilo in fondo alla colonna, staccate
+   dalle sezioni vere. Se non c'è nessuna sezione — accesso non ancora
+   collegato a niente — smette di spingere: una voce sola in fondo a una
+   colonna bianca sembrerebbe un guasto. */
+.separa-gruppi { flex: 1; }
+/* Solo in colonna. In riga il vuoto serve comunque a tenere il ⋯ del Profilo
+   all'estremità destra della barra, dov'è in ogni altra schermata: incollato al
+   logo, senza nome e senza bordo, non si riconoscerebbe come l'unica uscita. */
+@media (min-width: 821px) {
+  #tabs:empty ~ .separa-gruppi { flex: none; }
+}
+
+/* ---------------------------------------------------------------- voci */
+
+/* In colonna: la barra le impila e la voce accesa si riconosce dal filetto
+   rosa a sinistra più il fondo tenue. Su 236 pixel il solo cambio di colore
+   del testo non basterebbe a farla saltare all'occhio. */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  /* height:auto non è opzionale: con height:100% in colonna le voci si
+     prenderebbero tutta la barra e il separatore non spingerebbe più niente. */
+  height: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs-servizi { flex: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-left: 3px solid transparent;
+  border-bottom: 0;
+  border-radius: 0 10px 10px 0;
+}
+.tab:hover { color: var(--ink); background: var(--rosa-tenue); }
+.tab.attiva { color: var(--rosa); border-left-color: var(--rosa); background: var(--rosa-tenue); }
+.tab-segno { width: 18px; text-align: center; flex: none; }
+
+/* Il bottone che stringe la barra. Sta in fondo, sotto le voci di servizio:
+   è una preferenza, non una destinazione. Sotto gli 820 la barra è già in cima
+   e non c'è niente da stringere. */
+.stringi {
+  margin-top: 8px;
+  align-self: flex-end;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.stringi:hover { border-color: var(--rosa); color: var(--rosa); }
+
+/* Barra stretta: restano i segni. Cambiando --barra-w si spostano da sole sia
+   la barra sia il rientro del contenuto — è tutto il vantaggio di aver dato un
+   nome all'ingombro invece che alla posizione. */
+@media (min-width: 821px) {
+  body.barra-stretta { --barra-w: 66px; }
+  body.barra-stretta #topbar { padding: 14px 8px; align-items: center; }
+  body.barra-stretta .marchio-intero { display: none; }
+  body.barra-stretta .marchio-segno { display: block; width: 40px; height: 40px; margin: 0 0 10px; }
+  body.barra-stretta .tab-nome { display: none; }
+  body.barra-stretta .tab { justify-content: center; padding: 10px 0; border-radius: 10px; border-left: 0; }
+  body.barra-stretta .tab.attiva { border-left: 0; }
+  body.barra-stretta .tabs { align-items: stretch; }
+  body.barra-stretta .stringi { align-self: center; }
+}
+
+/* -------------------------------------------------------------- login */
+
+.loading { color: var(--muted); padding: 60px 0; text-align: center; }
+
+.login {
+  max-width: 380px;
+  margin: 64px auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--oro);
+  border-radius: 16px;
+  padding: 26px 30px 30px;
+  text-align: center;
+  box-shadow: 0 10px 34px rgba(58,32,44,.07);
+}
+.login h1 { font-size: 21px; margin: 0 0 6px; }
+.login h1.titolo-marchio { font-size: inherit; }
+
+/* Il marchio grande sopra l'accesso: è lui a dire dove sei, il titolo
+   scritto servirebbe solo a ripetere quello che c'è già nel logo. */
+/* Nome sotto la piastrella, nell'accesso: rosa e oro come nel logo. */
+.titolo-marchio {
+  margin: 0 0 18px;
+  line-height: 1.05;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+/* Il display:flex qui sopra batte il display:none che il browser dà da solo
+   agli elementi con [hidden]: senza questa riga il nome resterebbe scritto
+   anche sotto al logo, che lo contiene già. */
+.titolo-marchio[hidden] { display: none; }
+.titolo-marchio b { font-size: 25px; color: var(--rosa); font-weight: 700; }
+.titolo-marchio i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--oro);
+}
+
+/* Sull'accesso il marchio sta da solo e in grande: è lui a dire dove sei.
+   Trasparente, quindi niente riquadro e niente ombra — l'ombra disegnerebbe un
+   rettangolo attorno a un'immagine che un rettangolo non ce l'ha. */
+.marchio-grande {
+  display: block;
+  width: 230px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 18px;
+}
+.login .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+.login input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.login input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
+
+.btn {
+  background: var(--rosa);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--rosa-scuro); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-wide { width: 100%; }
+
+/* Due avvisi diversi: giallo quando c'è qualcosa da sapere, rosso quando
+   qualcosa non ha funzionato. Il colore deve dirlo prima delle parole. */
+.notice {
+  background: #fff8e6;
+  border: 1px solid #f0e0b6;
+  color: #6b5514;
+  padding: 11px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.notice.error { background: #fdeceb; border-color: #f3c9c6; color: #8d2b25; }
+
+/* --------------------------------------------------------- barra data */
+
+.testata {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  /* Si aggancia sotto la barra solo quando la barra è in cima: di lato quel
+     valore è zero e la testata si appiccica al bordo alto dello schermo. */
+  top: var(--barra-alta-h);
+  z-index: 20;
+}
+
+.riga-alta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.riga-bassa {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  padding: 0 18px 10px;
+}
+
+/* ------------------------------------------------------------- ricerca */
+
+.cerca-box { position: relative; flex: 1; max-width: 420px; }
+
+.cerca-box input {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-family: inherit;
+  background: var(--bg) url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' \
+stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
+<circle cx='11' cy='11' r='7'/><path d='M20 20l-3.5-3.5'/></svg>") no-repeat 11px center / 16px;
+}
+.cerca-box input:focus { outline: 2px solid var(--rosa); border-color: transparent; background-color: #fff; }
+
+.cerca-esiti {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(58,32,44,.14);
+  overflow: hidden;
+  z-index: 25;
+  display: none;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.cerca-esiti.aperti { display: block; }
+
+.esito {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 2px 10px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  padding: 9px 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.esito:last-child { border-bottom: 0; }
+.esito:hover { background: var(--rosa-tenue); }
+.esito .quando { grid-row: span 2; font-size: 13px; color: var(--rosa); font-weight: 650; align-self: center; }
+.esito .chi { font-size: 14.5px; font-weight: 600; }
+.esito .cosa { font-size: 12.5px; color: var(--muted); }
+.esito.vuoto { display: block; color: var(--muted); font-size: 14px; cursor: default; }
+
+.btn.aggiungi { padding: 10px 18px; border-radius: 10px; white-space: nowrap; }
+
+/* --------------------------------------------------------- data grande */
+
+.titolo { display: flex; flex-direction: column; gap: 1px; min-width: 150px; position: relative; }
+.titolo .anno { font-size: 12px; color: var(--muted); font-weight: 600; }
+.titolo .conteggio { font-size: 12.5px; color: var(--muted); }
+
+.data-grande {
+  position: relative;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-transform: capitalize;
+  cursor: pointer;
+  display: inline-block;
+}
+.data-grande {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.data-grande .freccia { font-size: 15px; color: var(--muted); }
+
+/* Calendario disegnato da noi: quello di sistema cambia aspetto tra desktop e
+   telefono e non si puo' allineare al resto. */
+.calendario {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(58,32,44,.16);
+  padding: 14px;
+  width: 292px;
+}
+.calendario[hidden] { display: none; }
+
+.cal-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 650;
+  text-transform: capitalize;
+  font-size: 15px;
+}
+.cal-nav {
+  border: 0;
+  background: var(--rosa-tenue);
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink);
+  font-family: inherit;
+}
+.cal-nav:hover { background: #e2e7f1; }
+
+.cal-gg {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.cal-gg span {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cal-griglia { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+
+.cg {
+  aspect-ratio: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+.cg:hover { background: var(--rosa-tenue); }
+.cg.fuori { color: #c2c7d4; }
+.cg.oggi { color: var(--oro); font-weight: 700; }
+.cg.scelto { background: var(--rosa); color: #fff; font-weight: 650; }
+
+/* -------------------------------------------------------- striscia giorni */
+
+.striscia {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 1;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.striscia::-webkit-scrollbar { height: 4px; }
+.striscia::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+.gday {
+  flex: 0 0 auto;
+  width: 54px;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 5px 0 7px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.gday:hover { background: var(--rosa-tenue); }
+.gday .gg { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+.gday .nn { font-size: 19px; font-weight: 650; line-height: 1.1; }
+.gday.festivo .gg, .gday.festivo .nn { color: #b26a6a; }
+.gday.oggi .nn { color: var(--oro); }
+.gday.scelto { background: var(--rosa); }
+.gday.scelto .gg, .gday.scelto .nn { color: #fff; }
+
+.nav-periodo { display: flex; align-items: center; gap: 8px; flex: 1; }
+
+/* ------------------------------------------------ interruttore colonne */
+
+.raggruppa {
+  display: flex;
+  background: var(--rosa-tenue);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+.rg {
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--muted);
+}
+.rg:hover { color: var(--ink); }
+.rg.attiva { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(58,32,44,.12); }
+
+.colonna.orfani { background-color: #fcfcfd; }
+
+
+.nav-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink);
+}
+.nav-btn:hover { background: var(--rosa-tenue); }
+.oggi-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.oggi-btn:hover { background: var(--rosa-tenue); }
+
+/* Selettore giorno / settimana / mese */
+.viste {
+  display: flex;
+  background: var(--rosa-tenue);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+}
+.vista {
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  padding: 6px 13px;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--muted);
+}
+.vista:hover { color: var(--ink); }
+.vista.attiva { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(58,32,44,.12); }
+
+/* ------------------------------------------------- intestazioni settimana */
+
+.testa .gg { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.testa .nn { display: block; font-size: 17px; font-weight: 650; line-height: 1.2; }
+.testa.oggi .nn { color: var(--oro); }
+.testa.oggi .gg { color: var(--oro); }
+.colonna.oggi { background-color: #fdfbf6; }
+
+/* ---------------------------------------------------------- vista mese */
+
+.mese-wrap { padding: 16px 18px 40px; max-width: 1100px; }
+
+.mese-teste {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.mese-teste > div {
+  text-align: center;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* minmax(0, 1fr) e non 1fr: l'aspect-ratio della cella qui sotto rimanda
+   indietro l'altezza del contenuto come larghezza minima, e sette minimi da 93
+   pixel più i vuoti fanno una griglia da 686 che non si comprime più. Sotto
+   quella soglia — su ogni telefono, e da quando la barra sta di lato anche
+   attorno ai 900 — sfondava di lato tutta la pagina. Meglio una cella un po'
+   più bassa del quadrato che una barra di scorrimento orizzontale. */
+.mese {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cella {
+  position: relative;
+  aspect-ratio: 1 / .82;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background .12s, border-color .12s;
+}
+.cella:hover { background: var(--rosa-tenue); border-color: #c9d0e0; }
+.cella.fuori { background: #fafbfd; }
+.cella.fuori .num { color: #b8bdcb; }
+.cella.oggi { border-color: var(--oro); border-width: 2px; padding: 7px; }
+
+.cella .num { font-size: 13px; color: var(--muted); font-weight: 600; }
+.cella.oggi .num { color: var(--oro); }
+.cella .tot { font-size: 24px; font-weight: 650; line-height: 1.05; color: var(--ink); }
+.cella .ore { font-size: 11.5px; color: var(--muted); }
+.cella[data-vuoto] { cursor: pointer; }
+
+.cella .pallino {
+  position: absolute;
+  top: 9px; right: 9px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--oro);
+}
+
+.legenda { color: var(--muted); font-size: 13px; margin: 16px 0 0; }
+
+@media (max-width: 720px) {
+    .viste { width: 100%; }
+  .vista { flex: 1; }
+  .cella .tot { font-size: 19px; }
+  .mese-wrap { padding: 12px; }
+}
+
+/* -------------------------------------------------------- la griglia */
+
+.griglia-wrap {
+  /* Contenitore che scorre per conto suo: cosi' l'intestazione delle colonne
+     si ancora al bordo di questo riquadro invece che alla pagina. Ancorata
+     alla pagina veniva spinta in basso sopra gli appuntamenti. */
+  overflow: auto;
+  height: max(240px, calc(100dvh - var(--testata-h, 128px)));
+}
+
+.griglia {
+  display: grid;
+  width: 100%;
+  min-width: max-content;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Le intestazioni sono una striscia a se', non la prima riga della griglia:
+   dentro la griglia il posizionamento appiccicoso finiva per farle scivolare
+   in mezzo agli appuntamenti. */
+.intestazioni {
+  display: grid;
+  width: 100%;
+  min-width: max-content;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.testa {
+  padding: 9px 8px;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  color: var(--ink);
+  border-left: 1px solid var(--line);
+}
+.testa.ore { border-left: 0; }
+
+.colonna-ore {
+  width: 62px;
+  position: relative;
+}
+.ora {
+  /* Una fascia per ora, non per mezz'ora: l'etichetta si scrive solo sull'ora
+     piena, come la si legge su un'agenda di carta. */
+  height: calc(var(--slot-h) * 2);
+  font-size: 11.5px;
+  color: var(--muted);
+  text-align: right;
+  padding-right: 8px;
+  transform: translateY(-7px);
+}
+
+.colonna {
+  position: relative;
+  /* Nessuna larghezza fissa: la colonna deve riempire la cella della griglia.
+     Con una larghezza fissa lo sfondo si fermava li' e le righe orarie
+     sparivano nella parte restante della cella. */
+  border-left: 1px solid var(--line);
+  /* Le righe della griglia sono disegnate dallo sfondo: una linea piena a
+     ogni ora, una piu' tenue alla mezza. */
+  /* Riga marcata sull'ora, riga tenue sulla mezza: senza questa differenza
+     l'etichetta sembra galleggiare tra due righe uguali. */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      var(--line) 0, var(--line) 1px,
+      transparent 1px, transparent calc(var(--slot-h) * 2)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent var(--slot-h),
+      #eef0f5 var(--slot-h), #eef0f5 calc(var(--slot-h) + 1px),
+      transparent calc(var(--slot-h) + 1px), transparent calc(var(--slot-h) * 2)
+    );
+}
+
+.appuntamento {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 7px;
+  padding: 5px 7px;
+  overflow: hidden;
+  cursor: pointer;
+  border-left: 3px solid;
+  font-size: 12.5px;
+  line-height: 1.3;
+  transition: filter .12s;
+}
+.appuntamento:hover { filter: brightness(.96); }
+/* Una riga sola con i puntini: nei blocchi stretti il testo a capo veniva
+   tagliato a meta' parola dal bordo inferiore. */
+.appuntamento .h,
+.appuntamento .t {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appuntamento .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appuntamento .h { font-weight: 650; }
+.appuntamento .c { font-weight: 600; }
+.appuntamento .t { color: rgba(0,0,0,.55); }
+
+/* Blocchi della settimana: ora sopra, cliente sotto, entrambi su una riga. */
+.appuntamento.compatto { padding: 4px 6px; font-size: 12px; line-height: 1.25; }
+.appuntamento.compatto .h { font-size: 11.5px; opacity: .75; }
+
+.appuntamento.non_presentato { opacity: .55; text-decoration: line-through; }
+.appuntamento.presentato::after {
+  content: "✓";
+  position: absolute;
+  top: 4px; right: 6px;
+  font-size: 12px;
+  color: rgba(0,0,0,.45);
+}
+
+.vuoto {
+  padding: 50px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ scheda */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  background: rgba(36,26,32,.38);
+  /* Copre anche la barra — con un pannello aperto la navigazione non dev'essere
+     cliccabile — ma la scheda si centra sullo spazio che resta al contenuto,
+     non sullo schermo, altrimenti risulta spostata di mezza barra. */
+  padding-left: var(--barra-w);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+.scheda {
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 460px;
+  padding: 22px;
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+.scheda h2 { margin: 0 0 3px; font-size: 18px; }
+.scheda .quando { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+.scheda dl { margin: 0 0 18px; display: grid; grid-template-columns: 88px 1fr; gap: 7px 10px; font-size: 14px; }
+.scheda dt { color: var(--muted); }
+.scheda dd { margin: 0; }
+.scheda .chiudi { width: 100%; }
+
+/* ------------------------------------------------------ modulo pannello */
+
+.scheda label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 14px 0 5px;
+}
+.scheda label .opz { font-weight: 400; }
+
+.scheda input,
+.scheda select,
+.scheda textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.scheda input:focus,
+.scheda select:focus,
+.scheda textarea:focus { outline: 2px solid var(--rosa); border-color: transparent; }
+.scheda textarea { resize: vertical; }
+
+.riga { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.riga > div > label:first-child { margin-top: 14px; }
+#nuovocliente .riga { margin-bottom: 8px; }
+
+/* Elenco dei clienti trovati durante la ricerca. */
+.risultati { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
+.risultati:empty { margin: 0; }
+.ris {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 9px 12px;
+  font-size: 14.5px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  color: var(--ink);
+}
+.ris:hover { background: var(--rosa-tenue); }
+.ris .tel { color: var(--muted); font-size: 13px; margin-left: 6px; }
+.ris.nuovo { color: var(--rosa); font-weight: 600; }
+
+.stati { display: flex; gap: 7px; flex-wrap: wrap; }
+.stato {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+.stato:hover { background: var(--rosa-tenue); }
+.stato.attivo { background: var(--rosa); color: #fff; border-color: var(--rosa); }
+
+.azioni { display: flex; gap: 10px; margin: 18px 0 10px; }
+.azioni .btn { flex: 1; }
+
+.btn-chiaro {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-chiaro:hover { background: var(--rosa-tenue); }
+.btn-chiaro.pericolo { color: #8d2b25; border-color: #f0cdca; }
+.btn-chiaro.pericolo:hover { background: #fdeceb; }
+
+/* --------------------------------------------------------- spostamento */
+
+body.in-spostamento .colonna { cursor: copy; }
+body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
+
+.barra-spostamento {
+  position: fixed;
+  left: calc(50% + var(--barra-w) / 2);
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: var(--rosa);
+  color: #fff;
+  padding: 11px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 40;
+  box-shadow: 0 6px 24px rgba(58,32,44,.28);
+  white-space: nowrap;
+}
+.annulla-spost {
+  background: rgba(255,255,255,.15);
+  border: 0;
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 620px) {
+  .velo { align-items: center; }
+  .scheda { border-radius: 16px; }
+}
+
+.esito.vuoto.errore { color: #8d2b25; }
+
+/* ------------------------------------------------ pannello appuntamento */
+
+.scheda-larga { max-width: 520px; }
+
+/* Resta in cima anche scorrendo: Salva e Annulla sono i comandi principali
+   e devono essere sempre raggiungibili. */
+.scheda-testa {
+  position: sticky;
+  top: -22px;
+  background: #fff;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.scheda-testa h2 { margin: 0; }
+.scheda-azioni { display: flex; gap: 8px; }
+.scheda-azioni .btn { padding: 8px 16px; border-radius: 999px; font-size: 14px; }
+
+/* Le due scelte: appuntamento con un cliente, oppure spazio chiuso. */
+.tipi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+
+.tipo {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink);
+}
+.tipo:hover { border-color: #c3cbdb; }
+.tipo strong { font-size: 14.5px; }
+.tipo span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.tipo.attivo { border-color: var(--rosa); background: var(--rosa-tenue); }
+
+.ris.vuoto { color: var(--muted); cursor: default; }
+
+/* Blocchi in griglia: neutri e rigati, si distinguono dagli appuntamenti. */
+.appuntamento.chiusura {
+  border-left-color: #9aa3b5;
+  color: #4a5163;
+  background:
+    repeating-linear-gradient(45deg,
+      #eef0f4 0, #eef0f4 6px,
+      #e6e9ef 6px, #e6e9ef 12px);
+}
+.appuntamento.chiusura .h { font-weight: 600; opacity: .8; font-size: 11.5px; }
+.appuntamento.chiusura .c { font-weight: 650; }
+
+/* --------------------------------------------------------- integrazioni */
+
+/* Il riquadro era nato dentro un pannello da 520 pixel. Adesso vive in una
+   pagina larga il triplo, e senza un limite suo diventerebbe una fascia vuota
+   con tre parole in mezzo: il contenuto non è cresciuto insieme al contenitore. */
+.integrazione {
+  max-width: 520px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.integrazione-testa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.integrazione-testa strong { font-size: 15px; }
+
+.badge-stato {
+  font-size: 12px;
+  font-weight: 650;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.badge-stato.on  { background: #e4f5ea; color: #1c6b39; }
+.badge-stato.off { background: #eef0f4; color: var(--muted); }
+
+.riga-switch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 14px 0 12px;
+  cursor: pointer;
+}
+.riga-switch input { width: auto; margin: 0; }
+
+/* Azione secondaria: il bottone pieno rosa è per la cosa principale, questo
+   per tutto il resto. Largo quanto il pannello quando sta in un pannello —
+   lì è l'unica cosa nella riga — ma dentro una pagina torna della sua
+   larghezza, altrimenti "Scollega" diventa un bottone da mille pixel. */
+.btn-secondario {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn-secondario:hover { border-color: #c3cbdb; background: #fafbfc; }
+.btn-secondario:disabled { opacity: .5; cursor: default; }
+.pagina .btn-secondario { width: auto; }
+.pagina a.btn-secondario { display: inline-block; text-decoration: none; }
+.btn-secondario.pericolo { color: #8d2b25; border-color: #f0d4d1; }
+.btn-secondario.pericolo:hover { background: #fdeceb; border-color: #e3b6b2; }
+
+/* ------------------------------------------------------------- profilo */
+
+/* Chi sei, in due colonne strette: l'etichetta a sinistra e il dato a destra.
+   Stessa forma della scheda dell'appuntamento, perché è la stessa cosa —
+   quattro righe da leggere, niente da compilare. */
+.scheda-dati {
+  margin: 0 0 26px;
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 7px 12px;
+  max-width: 520px;
+}
+.scheda-dati dt { color: var(--muted); }
+.scheda-dati dd { margin: 0; overflow-wrap: anywhere; }
+
+.azioni-profilo { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 32px; }
+
+/* Il modulo dei dati del centro. Stretto come la scheda dei dati qui sopra:
+   sono quattro righe corte, e un campo largo mille pixel per scriverci una
+   città sembra chiedere un tema. */
+.modulo-centro { max-width: 520px; }
+.campo { display: block; margin-bottom: 14px; }
+.campo > span {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.campo input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.campo input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
+
+/* Chi può entrare: una riga per persona, il ruolo a destra. Non è una tabella —
+   sono due o tre righe, e una tabella per tre righe è più impalcatura che dato. */
+.membri { max-width: 520px; }
+.membro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.membro:last-of-type { border-bottom: 0; }
+.membro-mail { flex: 1; overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------ conversazioni */
+
+/* Una chat non puo' scorrere tutta insieme: l'elenco e il thread scorrono
+   per conto loro, il campo di scrittura resta in fondo. Da qui l'altezza
+   fissa: senza un fondo, il campo di scrittura non ha su cosa appoggiarsi. */
+.wa-schermo {
+  height: calc(100dvh - var(--barra-alta-h));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+.wa-schermo > .notice { margin: 16px; }
+.wa-schermo > .loading { margin: auto; padding: 0; }
+
+.wa-corpo {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+
+.wa-lista {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: #fbfcfe;
+}
+
+.wa-voce {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 11px 14px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.wa-voce:hover { background: #f2f5fa; }
+.wa-voce.attiva { background: var(--rosa-tenue); }
+.wa-voce.prova strong::before { content: "✦ "; color: var(--oro); }
+
+.wa-voce-testa {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wa-voce-testa strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-quando { font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+.wa-ultimo {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.wa-tag {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 650;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fdf1e2;
+  color: #8a5a17;
+}
+
+.wa-thread {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wa-thread-testa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.wa-thread-testa strong { flex: 1; font-size: 14.5px; }
+.wa-indietro {
+  display: none;
+  background: none;
+  border: 0;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--rosa);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.btn-mini {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-mini:hover { border-color: #c3cbdb; }
+.btn-mini:disabled { opacity: .5; cursor: default; }
+
+.wa-nota {
+  margin: 0;
+  padding: 9px 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: #fbfcfe;
+  border-bottom: 1px solid var(--line);
+}
+
+.wa-messaggi {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+}
+
+.wa-bolla {
+  max-width: 78%;
+  padding: 8px 12px 6px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(58,32,44,.06);
+}
+.wa-bolla.in  { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; }
+.wa-bolla.out { align-self: flex-end; background: #dff3e3; border-bottom-right-radius: 4px; }
+
+.wa-ora {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* Il bot ci mette qualche secondo: senza un segno di vita sembrerebbe rotto. */
+.wa-bolla.attesa { display: flex; gap: 4px; padding: 12px 14px; }
+.wa-bolla.attesa span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8ba58f;
+  animation: wa-punti 1.2s infinite;
+}
+.wa-bolla.attesa span:nth-child(2) { animation-delay: .2s; }
+.wa-bolla.attesa span:nth-child(3) { animation-delay: .4s; }
+@keyframes wa-punti {
+  0%, 60%, 100% { opacity: .3; }
+  30% { opacity: 1; }
+}
+
+.wa-vuoto {
+  margin: auto;
+  color: var(--muted);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.wa-scrivi {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+.wa-scrivi input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14.5px;
+}
+.wa-scrivi input:focus { outline: none; border-color: var(--rosa); }
+.wa-scrivi .btn { border-radius: 999px; padding: 10px 20px; font-size: 14.5px; }
+
+/* Non c'e' spazio per due colonne: prima l'elenco, poi la chat.
+   Due soglie e non una perche' quello che conta non e' quanto e' larga la
+   finestra ma quanto ne resta a questa sezione: sotto i 700 la barra e' in cima
+   e la larghezza e' tutta sua; sopra gli 820 la barra e' di lato e se ne porta
+   via 236 prima ancora di cominciare, quindi la stessa strettezza arriva con
+   una finestra molto piu' grande. Spostare e basta il numero avrebbe mandato le
+   conversazioni a colonna singola a 900 pixel di finestra, dove ce ne sono 900. */
+@media (max-width: 700px), (820px < width <= 936px) {
+  .wa-lista { width: 100%; border-right: 0; }
+  .wa-thread { display: none; }
+  .wa-indietro { display: block; }
+  .wa-corpo.apri-thread .wa-lista { display: none; }
+  .wa-corpo.apri-thread .wa-thread { display: flex; }
+}
+
+/* ============================================================ le pagine
+   Agenda e conversazioni riempiono lo schermo; corsi e assistente sono
+   testo, e il testo va incolonnato e scritto un filo più grande. */
+
+.pagina {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px 22px 70px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.pagina h1 { font-size: 28px; margin: 0 0 6px; }
+.pagina h2 { font-size: 19px; margin: 32px 0 12px; }
+.pagina .sub { color: var(--muted); margin: 0 0 26px; }
+.pagina .notice { font-size: 15px; padding: 13px 16px; border-radius: 10px; }
+
+.back {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.back:hover { color: var(--ink); }
+
+.login .sub.small { font-size: 13.5px; margin: 14px 0 0; }
+.login .sub.small a { color: var(--rosa); }
+
+.btn-gold { background: var(--oro); color: #241c07; }
+a.btn { text-decoration: none; display: inline-block; }
+
+/* --------------------------------------------------------------- corsi */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow .15s, transform .15s;
+}
+.card:hover { box-shadow: 0 8px 26px rgba(214,73,127,.13); transform: translateY(-2px); border-color: #f0cddc; }
+.card.locked { opacity: .78; }
+
+.thumb {
+  aspect-ratio: 16 / 9;
+  background: var(--rosa-tenue) center/cover no-repeat;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.card-body { padding: 15px 16px 17px; }
+.card-body h3 { margin: 0 0 6px; font-size: 16px; line-height: 1.35; }
+.card-body p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+.meta {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+}
+.badge.gold { background: var(--oro-tenue); color: #8a6516; }
+
+/* Quanto manca alla fine del corso. */
+.bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; flex: 1; }
+.bar > i { display: block; height: 100%; background: var(--oro); }
+
+/* ------------------------------------------------------------- lezioni */
+
+.lessons { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.lesson {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 17px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+.lesson:last-child { border-bottom: 0; }
+.lesson:hover { background: var(--rosa-tenue); }
+.lesson .n {
+  width: 26px; height: 26px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+  display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 700;
+}
+.lesson .n.done { background: var(--ok-bg); color: var(--ok); }
+.lesson .n { font-variant-numeric: tabular-nums; }
+.lesson .t { flex: 1; }
+
+/* -------------------------------------------------------------- player */
+
+.player-wrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.player-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* Watermark: sopra al player, non cliccabile, si sposta ogni tanto. */
+#wm {
+  position: absolute;
+  pointer-events: none;
+  color: rgba(255,255,255,.42);
+  font-size: 13px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.6);
+  transition: left .8s ease, top .8s ease;
+  user-select: none;
+}
+
+.lesson-desc { margin-top: 22px; color: #333a4b; }
+.lesson-desc a { color: var(--rosa); }
+
+.actions { display: flex; gap: 12px; align-items: center; margin-top: 22px; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------- assistente */
+
+.chat { display: flex; flex-direction: column; }
+
+.chat-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chat-nav a, .chat-nav button {
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.chat-nav a:hover, .chat-nav button:hover { border-color: var(--rosa); }
+
+.conv-meta { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+.chat-msgs { display: flex; flex-direction: column; gap: 10px; }
+
+.msg {
+  max-width: 85%;
+  padding: 11px 15px;
+  border-radius: 15px;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+.msg.user {
+  align-self: flex-end;
+  background: var(--rosa);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+}
+.msg.ai {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 5px;
+}
+.msg.ai a { color: var(--rosa); font-weight: 600; }
+.msg .dots { color: var(--muted); font-style: italic; }
+
+.chat-status { color: var(--muted); font-size: 13px; font-style: italic; padding: 8px 2px 0; }
+.chat-status[hidden] { display: none; }
+
+.chat-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat-suggest button {
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 15px;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-suggest button:hover { border-color: var(--rosa); }
+
+.chat-form {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 16px;
+  background: var(--bg);
+}
+.chat-form input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+}
+.chat-form input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
+.chat-form .btn { border-radius: 999px; }
+
+/* ===================================================== la barra cambia lato
+
+   Sotto gli 820 pixel una colonna da 236 si mangerebbe un terzo dello schermo:
+   la barra torna in cima, orizzontale, com'era prima.
+
+   Questo blocco DEVE stare prima di quello a 620: sono due media query della
+   stessa forza, e a parità di forza vince l'ultima scritta. Appeso in fondo al
+   foglio per comodità, rimetterebbe la barra di lato proprio sui telefoni.
+
+   Larghezza e altezza dell'elemento si riscrivono a mano invece di riusare le
+   variabili: quelle dicono quanto spazio la barra ruba al CONTENUTO, e solo in
+   colonna quel numero coincide con la dimensione della barra. È lo stesso
+   equivoco che aveva reso inservibile la vecchia --barra-h. */
+@media (max-width: 820px) {
+  :root { --barra-w: 0px; --barra-alta-h: 62px; }
+
+  #topbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 0 18px;
+    width: auto;
+    height: var(--barra-alta-h);
+    position: sticky;
+    inset: auto;
+    top: 0;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(217,164,65,.35);
+  }
+  /* In riga torna l'emblema quadrato, e con lui il nome scritto accanto: qui
+     non è più un doppione, perché nell'emblema la scritta non c'è. */
+  .marchio-intero { display: none; }
+  .marchio-segno { display: block; width: 44px; height: 44px; margin: 0; }
+  .brand { display: flex; margin: 0; }
+  .stringi { display: none; }
+
+  /* In riga le voci non ci stanno tutte: si stringono e scorrono di lato.
+     La barra di scorrimento è nascosta, quindi la sfumatura sul bordo destro
+     è l'unico segnale che a destra c'è dell'altro. */
+  .tabs {
+    flex-direction: row;
+    align-items: stretch;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  }
+  .tabs-servizi { flex: none; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+
+  .tab {
+    padding: 0 14px;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+  }
+  .tab:hover { background: none; }
+  .tab.attiva { border-left-color: transparent; border-bottom-color: var(--rosa); background: none; }
+}
+
+@media (max-width: 620px) {
+  :root { --barra-alta-h: 52px; }
+  .pagina { padding: 22px 15px 60px; }
+  .pagina h1 { font-size: 23px; }
+  .msg { max-width: 92%; }
+  #topbar { padding: 0 10px; gap: 10px; }
+  /* Resta il solo emblema: il nome scritto ruberebbe spazio alle voci. */
+  .marchio-segno { height: 34px; width: 34px; }
+  .brand { display: none; }
+  .tab { padding: 0 10px; font-size: 13px; }
+  /* Stesso motivo: sul telefono le parole delle due voci di servizio rubano
+     spazio alle sezioni vere, e resta il solo segno. Il ⋯ del Profilo è lo
+     stesso che apriva il menu con email, password e uscita — dietro ci si
+     ritrovano le stesse cose. */
+  .tabs-servizi .tab-nome { display: none; }
+  .tabs-servizi .tab-segno { font-size: 17px; }
+}
+
+/* ================================================== console conversazioni
+
+   Il seguito del blocco "conversazioni" di sopra, scritto qui in coda perché
+   quello lì è ancora tutto valido: si aggiunge la parte che prima non c'era —
+   la ricerca, i filtri, gli avatar, la scheda, il campo per rispondere davvero
+   e il dialog dei template. Due sole cose di sopra vengono riscritte, e
+   entrambe di proposito: il verde delle bolle in uscita e la larghezza
+   dell'elenco, che con una ricerca e quattro pillole dentro non ci stava più. */
+
+:root {
+  /* Il verde di WhatsApp qui dentro era un ospite: quelle bolle sono nostre,
+     non della loro app. Il lavanda le stacca dal bianco delle clienti senza
+     entrare in lite col rosa, che in questa pagina vuol dire "si può
+     premere" — una parete di bolle rosa avrebbe reso invisibili i bottoni. */
+  --wa-lavanda: #ece9fb;
+  --wa-viola: #5a48a8;
+  --wa-viola-tenue: #efeafd;
+}
+
+/* --------------------------------------------------------------- elenco */
+
+/* Sopra l'elenco adesso c'è una testa che non deve scorrere via insieme alle
+   chat: la colonna diventa lei stessa incolonnata, e a scorrere è solo la
+   parte di sotto. Da 300 a 340 perché la ricerca e le pillole dei filtri, in
+   300, andavano a capo due volte. */
+.wa-lista {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fbfcfe;
+}
+
+.wa-lista-testa {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+input.wa-cerca {
+  width: 100%;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13.5px;
+  background: #fbfcfe;
+  color: var(--ink);
+}
+input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+
+/* Le pillole non vanno a capo: se non ci stanno scorrono di lato, come le voci
+   della barra quando è in cima. Una riga di filtri alta il doppio ruberebbe
+   spazio alle chat, che sono il motivo per cui si è qui. */
+.wa-filtri {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wa-filtri::-webkit-scrollbar { display: none; }
+
+.wa-pil {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wa-pil:hover { border-color: #c3cbdb; color: var(--ink); }
+.wa-pil.attiva {
+  background: var(--rosa);
+  border-color: var(--rosa);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(58,32,44,.12);
+}
+
+.wa-pallino {
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+}
+.wa-pil.attiva .wa-pallino { background: rgba(255,255,255,.28); color: #fff; }
+
+/* Il min-height a zero è quello che permette alle chat di scorrere invece di
+   sfondare la colonna: senza, l'altezza minima di una zona che scorre resta
+   quella del suo contenuto, e a scorrere finisce la pagina intera. */
+.wa-voci { flex: 1; min-height: 0; overflow-y: auto; }
+.wa-voci > .wa-vuoto { padding: 30px 16px; }
+
+/* La riga è diventata avatar + testo: da blocco a due colonne. Il min-width a
+   zero sulla seconda non è un vezzo — senza, i puntini di sospensione sul nome
+   lungo non compaiono e la riga si allarga oltre la colonna. */
+.wa-voce { display: flex; align-items: center; gap: 10px; }
+.wa-voce-corpo { flex: 1; min-width: 0; }
+
+.wa-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .3px;
+}
+.wa-avatar.prova { background: var(--oro-tenue); color: #8a5a17; }
+/* La scintilla adesso è dentro il tondo: due nello stesso rigo sono una di troppo. */
+.wa-voce.prova strong::before { content: none; }
+
+.wa-segni { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.wa-tag.fase { background: var(--wa-viola-tenue); color: var(--wa-viola); }
+
+/* Da quanto aspetta una risposta. Il colore lo dice prima del numero: verde
+   finché è appena arrivato, giallo dopo un quarto d'ora, rosso dopo un'ora —
+   che su una richiesta di appuntamento è tardi. */
+.wa-attesa {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.wa-attesa.calma   { background: var(--ok-bg); color: var(--ok); }
+.wa-attesa.tiepida { background: #fdf1e2; color: #8a5a17; }
+.wa-attesa.calda   { background: #fdeceb; color: #8d2b25; }
+.wa-thread-testa .wa-attesa { margin-top: 0; }
+
+/* --------------------------------------------------- intestazione thread */
+
+.wa-thread-testa .wa-avatar { width: 34px; height: 34px; font-size: 12px; }
+.wa-chi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Il flex:1 di sopra era pensato per uno strong figlio diretto della testa:
+   adesso sta dentro la colonnina, e lì dentro allungherebbe la riga del nome
+   invece di spingere le azioni a destra. */
+.wa-thread-testa .wa-chi strong {
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-tel { font-size: 11.5px; color: var(--muted); }
+
+.wa-fase {
+  max-width: 180px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-fase:hover { border-color: #c3cbdb; }
+
+.wa-info {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  font-style: italic;
+  cursor: pointer;
+}
+.wa-info:hover { border-color: #c3cbdb; color: var(--ink); }
+
+/* -------------------------------------------------------------- messaggi */
+
+/* La bolla non è più figlia diretta dell'area: le sta accanto la scintilla di
+   chi l'ha scritta, e due cose affiancate vogliono una riga loro. L'allineamento
+   passa dalla riga, la bolla continua a decidere solo quanto è larga. */
+.wa-riga { display: flex; align-items: flex-end; gap: 6px; max-width: 100%; }
+.wa-riga.in  { justify-content: flex-start; }
+.wa-riga.out { justify-content: flex-end; }
+
+/* Le chat crescono dal basso: due messaggi in croce appesi in cima a un'area
+   alta come lo schermo sembrano avanzi, non l'inizio di una conversazione. Il
+   margine automatico e non justify-content perché quando i messaggi sono tanti
+   e traboccano il margine si azzera da solo, mentre l'allineamento in fondo
+   lascerebbe i più vecchi sopra il bordo, dove non ci si scorre. */
+.wa-messaggi > .wa-riga:first-of-type { margin-top: auto; }
+
+/* Il segno che l'ha scritto il bot e non una persona. Fuori dalla bolla e non
+   dentro: dentro sembrerebbe parte del messaggio, e il bot non l'ha scritta. */
+.wa-scintilla { color: var(--oro); font-size: 12px; line-height: 22px; }
+
+.wa-bolla.out { background: var(--wa-lavanda); }
+
+/* --------------------------------------------------------- composer */
+
+.wa-scrivi .btn-mini { align-self: center; }
+
+/* Fuori dalle 24 ore non è un guasto: è WhatsApp che chiude la porta. Il campo
+   resta a schermo, spento, perché sparire e basta sembrerebbe un pezzo rotto —
+   e sopra c'è scritto perché, con accanto la strada che resta. */
+.wa-chiusa {
+  padding: 10px 18px 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+.wa-chiusa-nota {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.wa-chiusa-riga { display: flex; gap: 8px; align-items: center; }
+.wa-chiusa-riga input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14.5px;
+  background: #f6f4f7;
+  color: var(--muted);
+}
+.wa-chiusa-riga .btn { border-radius: 999px; padding: 10px 20px; font-size: 14.5px; }
+
+/* ------------------------------------------------------ dialog template */
+
+/* Campi e anteprima stanno affiancati: il senso del dialog è vedere la frase
+   montarsi mentre la si riempie, e uno sotto l'altro vorrebbe dire scorrere
+   avanti e indietro per capire cosa si sta scrivendo. Da qui la scheda larga. */
+.scheda.wa-scheda-larga { max-width: 760px; }
+
+.wa-etichetta { display: block; margin: 16px 0 8px; }
+
+.wa-chip-riga { display: flex; flex-wrap: wrap; gap: 8px; }
+.wa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-chip:hover { border-color: #c3cbdb; }
+.wa-chip.scelto { border-color: var(--ink); background: var(--wa-viola-tenue); }
+.wa-chip-lingua {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.wa-tmpl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 6px;
+}
+.wa-tmpl-campi .campo { margin-bottom: 12px; }
+.wa-tmpl-anteprima {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.wa-tmpl-anteprima .wa-riga { flex: 1; }
+.wa-tmpl-anteprima .wa-bolla { max-width: 100%; }
+
+/* Le variabili si vedono anche da spente: è l'unico modo per accorgersi che
+   nell'anteprima c'è ancora l'esempio di Meta e non il nome della cliente. */
+/* Il riempimento è di un pixel e non di tre: la variabile sta in mezzo a una
+   frase, e tre pixel per parte aprono un buco prima della virgola che nel
+   messaggio vero non ci sarà. */
+.wa-var {
+  background: var(--wa-viola-tenue);
+  color: var(--wa-viola);
+  border-radius: 4px;
+  padding: 0 1px;
+  font-weight: 600;
+}
+
+.wa-tmpl-azioni { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+.wa-tmpl-azioni .btn-secondario { width: auto; }
+
+/* ---------------------------------------------------------- scheda (i) */
+
+.wa-titoletto { margin: 26px 0 10px; font-size: 15px; }
+.wa-note { margin-bottom: 6px; }
+.wa-nota-riga {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.wa-nota-riga:last-child { border-bottom: 0; }
+.wa-nota-riga p { margin: 0 0 3px; font-size: 14px; white-space: pre-wrap; }
+.wa-note .wa-vuoto { margin: 0; text-align: left; }
+
+/* ================================================ di nuovo a colonna sola
+
+   Stesse due soglie del blocco di sopra, spostate in avanti di quaranta pixel:
+   l'elenco adesso è largo 340 e non 300, quindi il punto in cui le due colonne
+   smettono di starci arriva prima. Le regole si ripetono invece di cambiare i
+   numeri là sopra perché quel blocco non si tocca: questo è più largo di
+   quello e lo contiene, quindi comanda lui. */
+@media (max-width: 740px), (820px < width <= 976px) {
+  .wa-lista { width: 100%; border-right: 0; }
+  .wa-thread { display: none; }
+  .wa-indietro { display: block; }
+  .wa-corpo.apri-thread .wa-lista { display: none; }
+  .wa-corpo.apri-thread .wa-thread { display: flex; }
+}
+
+/* Nell'intestazione ci sono nome, stato, bottone, attesa e (i): su uno schermo
+   stretto vanno a capo invece di schiacciare il nome fino a farlo sparire. */
+@media (max-width: 560px) {
+  .wa-thread-testa { flex-wrap: wrap; }
+  .wa-chi { flex-basis: 60%; }
+  .wa-fase { max-width: 100%; }
+  .wa-tmpl { grid-template-columns: 1fr; }
+}
+
+/* I due bottoni in fondo alla scheda di un'integrazione. Serve una regola
+   apposta perché la scheda nasce da pannello(), che l'appende al body e non
+   dentro .pagina: il reset .pagina .btn-secondario{width:auto} non la
+   raggiunge, e senza questo i due bottoni si impilerebbero a tutta larghezza —
+   con "Scollega" largo quanto la scheda, che è l'ultimo che vuoi sfiorare. */
+.wa-azioni-scheda {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.wa-azioni-scheda .btn-secondario { width: auto; }

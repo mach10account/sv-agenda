@@ -1,0 +1,15 @@
+Richiesta di App Review Meta inviata il 5 agosto 2026 (submission 1028046166608633,
+permessi whatsapp_business_messaging + whatsapp_business_management).
+
+Finché questo file esiste, la RADICE del sito è congelata: è la versione che il
+revisore Meta confronta con le istruzioni scritte che ha in mano. Si sviluppa
+SOLO dentro dev/ — pubblicata su https://estetista-indipendente.com/dev/ — e
+l'hook pre-push rifiuta ogni push che tocca i file dell'app fuori da dev/.
+
+All'esito della revisione:
+  1. cp dev/*.js dev/*.html dev/*.css .        (riportare dev sulla radice)
+  2. alzare ?v= su tutti i file (comando nel README)
+  3. rm -r dev/ REVISIONE-IN-CORSO             (via la copia e questo freno)
+  4. togliere la riga da wa.congelati nel database
+  5. aggiornare le istruzioni del revisore su Meta se l'interfaccia è cambiata
+     (App settings → Basic → Website → Add or update instructions)
