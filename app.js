@@ -7,12 +7,12 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=16";
-import { mostraAgenda } from "./agenda.js?v=16";
-import { mostraConversazioni } from "./conversazioni.js?v=16";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=16";
-import { mostraAssistente } from "./assistente.js?v=16";
-import { mostraIntegrazioni } from "./integrazioni.js?v=16";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=18";
+import { mostraAgenda } from "./agenda.js?v=18";
+import { mostraConversazioni } from "./conversazioni.js?v=18";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=18";
+import { mostraAssistente } from "./assistente.js?v=18";
+import { mostraIntegrazioni } from "./integrazioni.js?v=18";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -37,9 +37,35 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=16" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=18" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
+
+// La barra si può stringere a soli segni: in colonna si porta via 236 pixel, e
+// nella vista giorno dell'agenda quei pixel sono colonne-cabina in meno. Chi
+// passa la giornata sull'agenda la stringe una volta e la ritrova stretta.
+const STRETTA = "sv-barra-stretta";
+const bottoneStringi = document.getElementById("stringi");
+
+function applicaLarghezzaBarra() {
+  const stretta = localStorage.getItem(STRETTA) === "1";
+  document.body.classList.toggle("barra-stretta", stretta);
+  bottoneStringi.textContent = stretta ? "›" : "‹";
+  bottoneStringi.title = stretta ? "Allarga la barra" : "Restringi la barra";
+  bottoneStringi.setAttribute("aria-label", bottoneStringi.title);
+}
+
+bottoneStringi.addEventListener("click", () => {
+  localStorage.setItem(STRETTA, document.body.classList.contains("barra-stretta") ? "0" : "1");
+  applicaLarghezzaBarra();
+  // La barra cambia larghezza, la testata dell'agenda si riflette e cambia
+  // altezza: la griglia va rimisurata. Invece di chiamare dentro agenda.js si
+  // annuncia il cambio a chiunque stia guardando la geometria — è lo stesso
+  // segnale che arriva trascinando il bordo della finestra.
+  window.dispatchEvent(new Event("resize"));
+});
+
+applicaLarghezzaBarra();
 
 let recovering = false;   // true mentre si sta impostando la password dal link
 let caricando = false;    // true mentre boot() sta ancora chiedendo centri e corsi
@@ -248,43 +274,136 @@ function renderNewPassword(dalRecupero) {
 // ---------------------------------------------------------------- profilo
 
 // Prende il posto del menu a tendina e ne eredita le tre voci: chi sei, cambia
-// password, esci. È fatta solo di roba che il guscio ha già in mano — nessuna
-// chiamata nuova — ed è il motivo per cui sta qui e non in un file suo: un
-// modulo in meno è un ?v= in meno da tenere allineato.
+// password, esci. Ci si sono aggiunti i dati del centro, che prima non si
+// potevano cambiare da nessuna parte. Sta qui e non in un file suo perché è
+// tutta roba del guscio, e un modulo in meno è un ?v= in meno da allineare.
 function mostraProfilo() {
   const centro = stato.centro;
+  const titolare = centro?.ruolo === "titolare";
   // Cabine e operatrici arrivano solo se c'è un centro (boot le chiede lì
   // dentro): chi ha soltanto i corsi trova stato.anagrafiche ancora a null, ed
   // è proprio la persona per cui Profilo è l'unica pagina che vede.
   const anag = stato.anagrafiche || {};
   const elenco = (titolo, righe) => (righe || []).length
     ? `<h2>${titolo}</h2><p>${righe.map((r) => esc(r.nome)).join(" · ")}</p>` : "";
+  const campo = (id, etichetta, valore, extra = "") => `
+    <label class="campo">
+      <span>${etichetta}</span>
+      <input id="c-${id}" value="${esc(valore || "")}" ${extra}>
+    </label>`;
 
   app.innerHTML = pagina(`
     <h1>Profilo</h1>
-    <p class="sub">Chi sei e come esci. Per cambiare i dati del centro scrivi al tuo consulente.</p>
+    <p class="sub">Chi sei, i dati del centro e come esci.</p>
 
     <dl class="scheda-dati">
       <dt>Accesso</dt><dd>${esc(stato.session.user.email)}</dd>
-      ${centro ? `<dt>Centro</dt><dd>${esc(centro.nome)}</dd>
-                  <dt>Ruolo</dt><dd>${esc(centro.ruolo || "—")}</dd>` : ""}
+      ${centro ? `<dt>Ruolo</dt><dd>${esc(centro.ruolo || "—")}</dd>
+                  ${centro.apertura && centro.chiusura
+                    ? `<dt>Orari</dt><dd>${esc(centro.apertura)} – ${esc(centro.chiusura)}</dd>` : ""}` : ""}
     </dl>
 
-    ${centro ? `
+    ${!centro ? `<p class="sub">Il tuo accesso non è collegato a nessun centro.</p>` : `
+      <h2>Il centro</h2>
+      ${titolare ? `
+        <form id="f-centro" class="modulo-centro">
+          ${campo("nome", "Nome", centro.nome, "required maxlength='120'")}
+          ${campo("citta", "Città", centro.citta, "maxlength='80'")}
+          ${campo("indirizzo", "Indirizzo", centro.indirizzo, "maxlength='160'")}
+          ${campo("telefono", "Telefono", centro.telefono, "maxlength='40' inputmode='tel'")}
+          <div id="esito-centro"></div>
+          <button class="btn" type="submit">Salva</button>
+        </form>
+        <p class="sub small">Gli orari di apertura li cambia il tuo consulente: da lì dipendono
+           gli appuntamenti già in agenda.</p>
+      ` : `
+        <dl class="scheda-dati">
+          <dt>Nome</dt><dd>${esc(centro.nome)}</dd>
+          ${centro.citta ? `<dt>Città</dt><dd>${esc(centro.citta)}</dd>` : ""}
+          ${centro.indirizzo ? `<dt>Indirizzo</dt><dd>${esc(centro.indirizzo)}</dd>` : ""}
+          ${centro.telefono ? `<dt>Telefono</dt><dd>${esc(centro.telefono)}</dd>` : ""}
+        </dl>
+        <p class="sub small">Solo la titolare può cambiare i dati del centro.</p>
+      `}
+
+      ${titolare ? `<h2>Chi può entrare</h2><div id="membri" class="loading">Carico…</div>` : ""}
       ${elenco("Cabine", anag.cabine)}
       ${elenco("Chi lavora in cabina", anag.operatori)}
-    ` : `<p class="sub">Il tuo accesso non è collegato a nessun centro.</p>`}
+    `}
 
     <div class="azioni-profilo">
       <a class="btn-secondario" href="#/password">Cambia password</a>
       <button class="btn-secondario pericolo" id="esci">Esci</button>
     </div>`);
 
+  // Il contenitore si prende adesso, prima di qualunque attesa: se si cambia
+  // sezione mentre l'elenco arriva, questo è staccato dal DOM e la scrittura
+  // tardiva si perde invece di comparire sopra la pagina nuova.
+  const box = app.querySelector(".pagina");
+
   document.getElementById("esci").onclick = async () => {
     await sb.auth.signOut();
     location.hash = "#/";
     location.reload();
   };
+
+  const modulo = box.querySelector("#f-centro");
+  if (modulo) modulo.onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = modulo.querySelector("button");
+    const esito = modulo.querySelector("#esito-centro");
+    const leggi = (id) => box.querySelector("#c-" + id).value;
+    btn.disabled = true;
+    btn.textContent = "Salvo…";
+    esito.innerHTML = "";
+
+    const { data, error } = await sb.rpc("crm_centro_salva", {
+      p_centro: centro.id,
+      p_nome: leggi("nome"),
+      p_citta: leggi("citta"),
+      p_indirizzo: leggi("indirizzo"),
+      p_telefono: leggi("telefono"),
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Salva";
+    if (error || !data?.ok) {
+      esito.innerHTML = erroreBox(error?.message || data?.errore || "Non riuscito");
+      return;
+    }
+    // Lo stato condiviso va aggiornato a mano: il centro è stato caricato
+    // all'ingresso e nessuno lo rilegge finché non si ricarica la pagina.
+    centro.nome = leggi("nome").trim();
+    centro.citta = leggi("citta").trim() || null;
+    centro.indirizzo = leggi("indirizzo").trim() || null;
+    centro.telefono = leggi("telefono").trim() || null;
+    esito.innerHTML = `<div class="notice">Salvato.</div>`;
+  };
+
+  if (titolare) caricaMembri(box, centro.id);
+}
+
+// Chi ha un accesso a questo centro. L'email non sta nella tabella dei membri —
+// sta dove il browser non può guardare — quindi la porta una funzione apposta.
+async function caricaMembri(box, centroId) {
+  const { data, error } = await sb.rpc("crm_membri", { p_centro: centroId });
+  const zona = box.querySelector("#membri");
+  if (!zona) return;                       // sezione cambiata nel frattempo
+
+  if (error || !data?.ok) {
+    zona.className = "";
+    zona.innerHTML = erroreBox(error?.message || data?.errore || "Non disponibile");
+    return;
+  }
+
+  const membri = data.membri || [];
+  zona.className = "membri";
+  zona.innerHTML = membri.map((m) => `
+    <div class="membro">
+      <span class="membro-mail">${esc(m.email)}${m.io ? " (tu)" : ""}</span>
+      <span class="badge-stato ${m.ruolo === "titolare" ? "on" : "off"}">${esc(m.ruolo)}</span>
+    </div>`).join("")
+    + `<p class="sub small">Per aggiungere o togliere una persona scrivi al tuo consulente.</p>`;
 }
 
 // ----------------------------------------------------------------- rotte

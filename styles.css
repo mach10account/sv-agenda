@@ -177,6 +177,41 @@ body {
 .tab.attiva { color: var(--rosa); border-left-color: var(--rosa); background: var(--rosa-tenue); }
 .tab-segno { width: 18px; text-align: center; flex: none; }
 
+/* Il bottone che stringe la barra. Sta in fondo, sotto le voci di servizio:
+   è una preferenza, non una destinazione. Sotto gli 820 la barra è già in cima
+   e non c'è niente da stringere. */
+.stringi {
+  margin-top: 8px;
+  align-self: flex-end;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.stringi:hover { border-color: var(--rosa); color: var(--rosa); }
+
+/* Barra stretta: restano i segni. Cambiando --barra-w si spostano da sole sia
+   la barra sia il rientro del contenuto — è tutto il vantaggio di aver dato un
+   nome all'ingombro invece che alla posizione. */
+@media (min-width: 821px) {
+  body.barra-stretta { --barra-w: 66px; }
+  body.barra-stretta #topbar { padding: 14px 8px; align-items: center; }
+  body.barra-stretta .marchio-intero { display: none; }
+  body.barra-stretta .marchio-segno { display: block; width: 40px; height: 40px; margin: 0 0 10px; }
+  body.barra-stretta .tab-nome { display: none; }
+  body.barra-stretta .tab { justify-content: center; padding: 10px 0; border-radius: 10px; border-left: 0; }
+  body.barra-stretta .tab.attiva { border-left: 0; }
+  body.barra-stretta .tabs { align-items: stretch; }
+  body.barra-stretta .stringi { align-self: center; }
+}
+
 /* -------------------------------------------------------------- login */
 
 .loading { color: var(--muted); padding: 60px 0; text-align: center; }
@@ -1045,6 +1080,43 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 
 .azioni-profilo { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 32px; }
 
+/* Il modulo dei dati del centro. Stretto come la scheda dei dati qui sopra:
+   sono quattro righe corte, e un campo largo mille pixel per scriverci una
+   città sembra chiedere un tema. */
+.modulo-centro { max-width: 520px; }
+.campo { display: block; margin-bottom: 14px; }
+.campo > span {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.campo input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.campo input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
+
+/* Chi può entrare: una riga per persona, il ruolo a destra. Non è una tabella —
+   sono due o tre righe, e una tabella per tre righe è più impalcatura che dato. */
+.membri { max-width: 520px; }
+.membro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.membro:last-of-type { border-bottom: 0; }
+.membro-mail { flex: 1; overflow-wrap: anywhere; }
+
 /* ------------------------------------------------------ conversazioni */
 
 /* Una chat non puo' scorrere tutta insieme: l'elenco e il thread scorrono
@@ -1524,6 +1596,7 @@ a.btn { text-decoration: none; display: inline-block; }
   .marchio-intero { display: none; }
   .marchio-segno { display: block; width: 44px; height: 44px; margin: 0; }
   .brand { display: flex; margin: 0; }
+  .stringi { display: none; }
 
   /* In riga le voci non ci stanno tutte: si stringono e scorrono di lato.
      La barra di scorrimento è nascosta, quindi la sfumatura sul bordo destro
@@ -1566,3 +1639,367 @@ a.btn { text-decoration: none; display: inline-block; }
   .tabs-servizi .tab-nome { display: none; }
   .tabs-servizi .tab-segno { font-size: 17px; }
 }
+
+/* ================================================== console conversazioni
+
+   Il seguito del blocco "conversazioni" di sopra, scritto qui in coda perché
+   quello lì è ancora tutto valido: si aggiunge la parte che prima non c'era —
+   la ricerca, i filtri, gli avatar, la scheda, il campo per rispondere davvero
+   e il dialog dei template. Due sole cose di sopra vengono riscritte, e
+   entrambe di proposito: il verde delle bolle in uscita e la larghezza
+   dell'elenco, che con una ricerca e quattro pillole dentro non ci stava più. */
+
+:root {
+  /* Il verde di WhatsApp qui dentro era un ospite: quelle bolle sono nostre,
+     non della loro app. Il lavanda le stacca dal bianco delle clienti senza
+     entrare in lite col rosa, che in questa pagina vuol dire "si può
+     premere" — una parete di bolle rosa avrebbe reso invisibili i bottoni. */
+  --wa-lavanda: #ece9fb;
+  --wa-viola: #5a48a8;
+  --wa-viola-tenue: #efeafd;
+}
+
+/* --------------------------------------------------------------- elenco */
+
+/* Sopra l'elenco adesso c'è una testa che non deve scorrere via insieme alle
+   chat: la colonna diventa lei stessa incolonnata, e a scorrere è solo la
+   parte di sotto. Da 300 a 340 perché la ricerca e le pillole dei filtri, in
+   300, andavano a capo due volte. */
+.wa-lista {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fbfcfe;
+}
+
+.wa-lista-testa {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+input.wa-cerca {
+  width: 100%;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13.5px;
+  background: #fbfcfe;
+  color: var(--ink);
+}
+input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+
+/* Le pillole non vanno a capo: se non ci stanno scorrono di lato, come le voci
+   della barra quando è in cima. Una riga di filtri alta il doppio ruberebbe
+   spazio alle chat, che sono il motivo per cui si è qui. */
+.wa-filtri {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wa-filtri::-webkit-scrollbar { display: none; }
+
+.wa-pil {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wa-pil:hover { border-color: #c3cbdb; color: var(--ink); }
+.wa-pil.attiva {
+  background: var(--rosa);
+  border-color: var(--rosa);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(58,32,44,.12);
+}
+
+.wa-pallino {
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--rosa-tenue);
+  color: var(--rosa);
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+}
+.wa-pil.attiva .wa-pallino { background: rgba(255,255,255,.28); color: #fff; }
+
+/* Il min-height a zero è quello che permette alle chat di scorrere invece di
+   sfondare la colonna: senza, l'altezza minima di una zona che scorre resta
+   quella del suo contenuto, e a scorrere finisce la pagina intera. */
+.wa-voci { flex: 1; min-height: 0; overflow-y: auto; }
+.wa-voci > .wa-vuoto { padding: 30px 16px; }
+
+/* La riga è diventata avatar + testo: da blocco a due colonne. Il min-width a
+   zero sulla seconda non è un vezzo — senza, i puntini di sospensione sul nome
+   lungo non compaiono e la riga si allarga oltre la colonna. */
+.wa-voce { display: flex; align-items: center; gap: 10px; }
+.wa-voce-corpo { flex: 1; min-width: 0; }
+
+.wa-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .3px;
+}
+.wa-avatar.prova { background: var(--oro-tenue); color: #8a5a17; }
+/* La scintilla adesso è dentro il tondo: due nello stesso rigo sono una di troppo. */
+.wa-voce.prova strong::before { content: none; }
+
+.wa-segni { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.wa-tag.fase { background: var(--wa-viola-tenue); color: var(--wa-viola); }
+
+/* Da quanto aspetta una risposta. Il colore lo dice prima del numero: verde
+   finché è appena arrivato, giallo dopo un quarto d'ora, rosso dopo un'ora —
+   che su una richiesta di appuntamento è tardi. */
+.wa-attesa {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.wa-attesa.calma   { background: var(--ok-bg); color: var(--ok); }
+.wa-attesa.tiepida { background: #fdf1e2; color: #8a5a17; }
+.wa-attesa.calda   { background: #fdeceb; color: #8d2b25; }
+.wa-thread-testa .wa-attesa { margin-top: 0; }
+
+/* --------------------------------------------------- intestazione thread */
+
+.wa-thread-testa .wa-avatar { width: 34px; height: 34px; font-size: 12px; }
+.wa-chi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Il flex:1 di sopra era pensato per uno strong figlio diretto della testa:
+   adesso sta dentro la colonnina, e lì dentro allungherebbe la riga del nome
+   invece di spingere le azioni a destra. */
+.wa-thread-testa .wa-chi strong {
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-tel { font-size: 11.5px; color: var(--muted); }
+
+.wa-fase {
+  max-width: 180px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-fase:hover { border-color: #c3cbdb; }
+
+.wa-info {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  font-style: italic;
+  cursor: pointer;
+}
+.wa-info:hover { border-color: #c3cbdb; color: var(--ink); }
+
+/* -------------------------------------------------------------- messaggi */
+
+/* La bolla non è più figlia diretta dell'area: le sta accanto la scintilla di
+   chi l'ha scritta, e due cose affiancate vogliono una riga loro. L'allineamento
+   passa dalla riga, la bolla continua a decidere solo quanto è larga. */
+.wa-riga { display: flex; align-items: flex-end; gap: 6px; max-width: 100%; }
+.wa-riga.in  { justify-content: flex-start; }
+.wa-riga.out { justify-content: flex-end; }
+
+/* Le chat crescono dal basso: due messaggi in croce appesi in cima a un'area
+   alta come lo schermo sembrano avanzi, non l'inizio di una conversazione. Il
+   margine automatico e non justify-content perché quando i messaggi sono tanti
+   e traboccano il margine si azzera da solo, mentre l'allineamento in fondo
+   lascerebbe i più vecchi sopra il bordo, dove non ci si scorre. */
+.wa-messaggi > .wa-riga:first-of-type { margin-top: auto; }
+
+/* Il segno che l'ha scritto il bot e non una persona. Fuori dalla bolla e non
+   dentro: dentro sembrerebbe parte del messaggio, e il bot non l'ha scritta. */
+.wa-scintilla { color: var(--oro); font-size: 12px; line-height: 22px; }
+
+.wa-bolla.out { background: var(--wa-lavanda); }
+
+/* --------------------------------------------------------- composer */
+
+.wa-scrivi .btn-mini { align-self: center; }
+
+/* Fuori dalle 24 ore non è un guasto: è WhatsApp che chiude la porta. Il campo
+   resta a schermo, spento, perché sparire e basta sembrerebbe un pezzo rotto —
+   e sopra c'è scritto perché, con accanto la strada che resta. */
+.wa-chiusa {
+  padding: 10px 18px 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+.wa-chiusa-nota {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.wa-chiusa-riga { display: flex; gap: 8px; align-items: center; }
+.wa-chiusa-riga input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14.5px;
+  background: #f6f4f7;
+  color: var(--muted);
+}
+.wa-chiusa-riga .btn { border-radius: 999px; padding: 10px 20px; font-size: 14.5px; }
+
+/* ------------------------------------------------------ dialog template */
+
+/* Campi e anteprima stanno affiancati: il senso del dialog è vedere la frase
+   montarsi mentre la si riempie, e uno sotto l'altro vorrebbe dire scorrere
+   avanti e indietro per capire cosa si sta scrivendo. Da qui la scheda larga. */
+.scheda.wa-scheda-larga { max-width: 760px; }
+
+.wa-etichetta { display: block; margin: 16px 0 8px; }
+
+.wa-chip-riga { display: flex; flex-wrap: wrap; gap: 8px; }
+.wa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wa-chip:hover { border-color: #c3cbdb; }
+.wa-chip.scelto { border-color: var(--ink); background: var(--wa-viola-tenue); }
+.wa-chip-lingua {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.wa-tmpl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 6px;
+}
+.wa-tmpl-campi .campo { margin-bottom: 12px; }
+.wa-tmpl-anteprima {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.wa-tmpl-anteprima .wa-riga { flex: 1; }
+.wa-tmpl-anteprima .wa-bolla { max-width: 100%; }
+
+/* Le variabili si vedono anche da spente: è l'unico modo per accorgersi che
+   nell'anteprima c'è ancora l'esempio di Meta e non il nome della cliente. */
+/* Il riempimento è di un pixel e non di tre: la variabile sta in mezzo a una
+   frase, e tre pixel per parte aprono un buco prima della virgola che nel
+   messaggio vero non ci sarà. */
+.wa-var {
+  background: var(--wa-viola-tenue);
+  color: var(--wa-viola);
+  border-radius: 4px;
+  padding: 0 1px;
+  font-weight: 600;
+}
+
+.wa-tmpl-azioni { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+.wa-tmpl-azioni .btn-secondario { width: auto; }
+
+/* ---------------------------------------------------------- scheda (i) */
+
+.wa-titoletto { margin: 26px 0 10px; font-size: 15px; }
+.wa-note { margin-bottom: 6px; }
+.wa-nota-riga {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.wa-nota-riga:last-child { border-bottom: 0; }
+.wa-nota-riga p { margin: 0 0 3px; font-size: 14px; white-space: pre-wrap; }
+.wa-note .wa-vuoto { margin: 0; text-align: left; }
+
+/* ================================================ di nuovo a colonna sola
+
+   Stesse due soglie del blocco di sopra, spostate in avanti di quaranta pixel:
+   l'elenco adesso è largo 340 e non 300, quindi il punto in cui le due colonne
+   smettono di starci arriva prima. Le regole si ripetono invece di cambiare i
+   numeri là sopra perché quel blocco non si tocca: questo è più largo di
+   quello e lo contiene, quindi comanda lui. */
+@media (max-width: 740px), (820px < width <= 976px) {
+  .wa-lista { width: 100%; border-right: 0; }
+  .wa-thread { display: none; }
+  .wa-indietro { display: block; }
+  .wa-corpo.apri-thread .wa-lista { display: none; }
+  .wa-corpo.apri-thread .wa-thread { display: flex; }
+}
+
+/* Nell'intestazione ci sono nome, stato, bottone, attesa e (i): su uno schermo
+   stretto vanno a capo invece di schiacciare il nome fino a farlo sparire. */
+@media (max-width: 560px) {
+  .wa-thread-testa { flex-wrap: wrap; }
+  .wa-chi { flex-basis: 60%; }
+  .wa-fase { max-width: 100%; }
+  .wa-tmpl { grid-template-columns: 1fr; }
+}
+
+/* I due bottoni in fondo alla scheda di un'integrazione. Serve una regola
+   apposta perché la scheda nasce da pannello(), che l'appende al body e non
+   dentro .pagina: il reset .pagina .btn-secondario{width:auto} non la
+   raggiunge, e senza questo i due bottoni si impilerebbero a tutta larghezza —
+   con "Scollega" largo quanto la scheda, che è l'ultimo che vuoi sfiorare. */
+.wa-azioni-scheda {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.wa-azioni-scheda .btn-secondario { width: auto; }
