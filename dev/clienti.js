@@ -4,7 +4,7 @@
 // I clienti nascevano solo dentro il modale appuntamento dell'agenda; da qui
 // si vedono e si governano tutti.
 
-import { sb, app, stato, esc, pagina, erroreBox, avvisoBox, pannello } from "./core.js?v=26";
+import { sb, app, stato, esc, pagina, erroreBox, avvisoBox, pannello } from "./core.js?v=27";
 
 // Cosa si sta guardando: sopravvive al cambio sezione (come `giorno` in
 // agenda), si azzera solo ricaricando il sito.

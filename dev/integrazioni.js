@@ -15,7 +15,7 @@
 // pagina. Per questo dopo il giro su Meta non si ritocca niente a mano: si
 // rilegge e si ridisegna da capo.
 
-import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, avvisoBox, erroreBox, pagina, pannello } from "./core.js?v=26";
+import { sb, app, stato, esc, SUPABASE_URL, SUPABASE_KEY, avvisoBox, erroreBox, pagina, pannello } from "./core.js?v=27";
 
 
 // Collegamento del WhatsApp del centro. Il giro passa da Meta: la titolare

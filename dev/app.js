@@ -7,13 +7,14 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=26";
-import { mostraAgenda } from "./agenda.js?v=26";
-import { mostraConversazioni } from "./conversazioni.js?v=26";
-import { mostraClienti } from "./clienti.js?v=26";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=26";
-import { mostraAssistente } from "./assistente.js?v=26";
-import { mostraIntegrazioni } from "./integrazioni.js?v=26";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=27";
+import { mostraAgenda } from "./agenda.js?v=27";
+import { mostraConversazioni } from "./conversazioni.js?v=27";
+import { mostraClienti } from "./clienti.js?v=27";
+import { mostraServizi } from "./servizi.js?v=27";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=27";
+import { mostraAssistente } from "./assistente.js?v=27";
+import { mostraIntegrazioni } from "./integrazioni.js?v=27";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -38,7 +39,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=26" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=27" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 
@@ -85,6 +86,9 @@ const SEZIONI = [
   // Come l'agenda, per tutto il centro: i clienti li crea anche chi sta al bancone.
   { id: "clienti",       nome: "Clienti",       segno: "❖", gruppo: 1, disponibile: () => !!stato.centro },
   { id: "conversazioni", nome: "Conversazioni", segno: "✆", gruppo: 1, disponibile: () => stato.centro?.ruolo === "titolare" },
+  // Il listino è roba da titolare, come le conversazioni: chi sta al bancone
+  // i servizi li sceglie in agenda, non li cambia.
+  { id: "servizi",       nome: "Servizi",       segno: "✿", gruppo: 1, disponibile: () => stato.centro?.ruolo === "titolare" },
   // La voce si chiama Formazione ma l'id resta "corsi": la rotta #/corsi gira
   // da tempo nei link mandati ai centri, e un nome nuovo non deve romperli.
   { id: "corsi",         nome: "Formazione",    segno: "▷", gruppo: 1, disponibile: haCorsi },
@@ -463,6 +467,7 @@ function route() {
   if (sezione === "agenda")        pulizia = mostraAgenda();
   else if (sezione === "clienti")  mostraClienti();
   else if (sezione === "conversazioni") pulizia = mostraConversazioni();
+  else if (sezione === "servizi")  mostraServizi();
   else if (sezione === "corsi")    mostraCorsi(param);   // param: la scheda "webinar"
   else if (sezione === "corso")    mostraCorso(param);
   else if (sezione === "lezione")  mostraLezione(param);
