@@ -7,13 +7,13 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=25";
-import { mostraAgenda } from "./agenda.js?v=25";
-import { mostraConversazioni } from "./conversazioni.js?v=25";
-import { mostraClienti } from "./clienti.js?v=25";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=25";
-import { mostraAssistente } from "./assistente.js?v=25";
-import { mostraIntegrazioni } from "./integrazioni.js?v=25";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=26";
+import { mostraAgenda } from "./agenda.js?v=26";
+import { mostraConversazioni } from "./conversazioni.js?v=26";
+import { mostraClienti } from "./clienti.js?v=26";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=26";
+import { mostraAssistente } from "./assistente.js?v=26";
+import { mostraIntegrazioni } from "./integrazioni.js?v=26";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -38,7 +38,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=25" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=26" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 

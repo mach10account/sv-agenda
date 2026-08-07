@@ -3,7 +3,7 @@
 // #/corsi, #/corso/<slug> e #/lezione/<id> sono rimaste identiche perché in
 // giro ci sono link già mandati ai centri — è cambiato solo il nome a schermo.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=25";
+import { sb, app, stato, esc, pagina } from "./core.js?v=26";
 
 // Le descrizioni arrivano da GHL come HTML. Teniamo solo il minimo:
 // niente script, niente attributi, e i link si aprono in una scheda nuova.
@@ -54,65 +54,64 @@ export async function caricaCatalogo() {
 
 // ---------------------------------------------------------------- webinar
 
-// I webinar dal vivo non hanno ancora una tabella loro: il calendario si
-// aggiorna qui e si ripubblica, e le righe vecchie si tolgono a mano. Data e
-// ora sono locali — il pubblico è tutto in Italia. "link" è la stanza a cui
-// collegarsi, "registrazione" arriva dopo: finché uno dei due manca, il suo
-// bottone resta spento invece di portare nel vuoto.
-const WEBINAR = [
-  { data: "2026-08-11T18:00", titolo: "Come gestire le obiezioni sul prezzo in cabina",
-    categoria: "Vendita", relatore: "Giada", link: "", registrazione: "" },
-  { data: "2026-08-12T17:30", titolo: "Leggere il conto economico del tuo centro estetico",
-    categoria: "Numeri & Margini", relatore: "Federico", link: "", registrazione: "" },
-  { data: "2026-08-14T18:00", titolo: "Costruire un'offerta che il cliente non può rifiutare",
-    categoria: "Marketing", relatore: "Matteo", link: "", registrazione: "" },
-  { data: "2026-07-28T18:00", titolo: "Script di riattivazione: le prime 10 chiamate",
-    categoria: "Vendita", relatore: "Giada", link: "", registrazione: "" },
-];
+// Il calendario arriva da webinar.json, copia della tabella Notion dove i
+// webinar vengono programmati: si riallinea il file e si ripubblica, il
+// codice non si tocca. Si legge a ogni apertura della scheda, senza ?v:
+// GitHub Pages lo tiene al massimo dieci minuti, così anche una pagina
+// aperta da giorni sul tablet rilegge il calendario nuovo da sola.
+async function caricaWebinar() {
+  const r = await fetch("webinar.json");
+  if (!r.ok) throw new Error("webinar.json " + r.status);
+  return (await r.json()).webinar ?? [];
+}
 
-// Le categorie con la loro classe di colore. Anche i filtri nascono da qui:
-// una categoria nuova si aggiunge in questa riga e basta.
-const CATEGORIE = { "Vendita": "vendita", "Marketing": "marketing", "Numeri & Margini": "numeri" };
-
-const MESI = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-const SETTIMANA = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+// Nel file le date sono UTC, come le salva Notion; a schermo diventano ora
+// italiana per fuso dichiarato, non per orologio del dispositivo — un tablet
+// impostato male non deve spostare l'ora del webinar. È la scelta già fatta
+// dall'agenda, che converte nel database.
+const FUSO = "Europe/Rome";
+const inRoma = (d, opz) => new Intl.DateTimeFormat("it-IT", { timeZone: FUSO, ...opz }).format(d);
+const giornoRoma = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(d);
 
 // Un webinar resta "in corso" per due ore dall'inizio: chi apre la pagina a
 // sessione iniziata deve ancora potersi collegare.
 const finito = (w) => new Date(w.data).getTime() < Date.now() - 2 * 3600 * 1000;
 
 // "Oggi" e "Domani" a voce, come lo si direbbe; da lì in poi il giorno della
-// settimana, che per una che lavora su appuntamenti dice più del numero.
+// settimana, che per chi lavora su appuntamenti dice più del numero.
 function quandoWebinar(w) {
   const d = new Date(w.data);
-  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
-  const diff = Math.round((new Date(d).setHours(0, 0, 0, 0) - oggi) / 86400000);
-  const giorno = diff === 0 ? "Oggi" : diff === 1 ? "Domani" : `${SETTIMANA[d.getDay()]} ${d.getDate()}`;
-  return `${giorno}, ${w.data.slice(11, 16)}`;
+  const g = giornoRoma(d);
+  let giorno = g === giornoRoma(new Date()) ? "Oggi"
+    : g === giornoRoma(new Date(Date.now() + 86400000)) ? "Domani"
+    : inRoma(d, { weekday: "short", day: "numeric" });
+  giorno = giorno[0].toUpperCase() + giorno.slice(1);
+  return `${giorno}, ${inRoma(d, { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function rigaWebinar(w) {
   const d = new Date(w.data);
   const passato = finito(w);
 
+  // Il link di Streamyard è lo stesso prima e dopo: durante è la stanza,
+  // a webinar finito serve la registrazione. Finché manca, bottone spento.
   const quando = passato
-    ? (w.registrazione ? "Registrazione disponibile" : "Registrazione in arrivo")
-    : `${quandoWebinar(w)} · con ${esc(w.relatore)}`;
-
-  const apri = (url, testo, classe) => url
-    ? `<a class="btn ${classe}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${testo}</a>`
+    ? (w.link ? "Registrazione disponibile" : "Registrazione in arrivo")
+    : quandoWebinar(w);
+  const testo = passato ? "Rivedi" : "Collegati";
+  const classe = passato ? "btn-chiaro" : "btn-gold";
+  const bottone = w.link
+    ? `<a class="btn ${classe}" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">${testo}</a>`
     : `<button class="btn ${classe}" disabled>${testo}</button>`;
-  const bottone = passato
-    ? apri(w.registrazione, "Rivedi", "btn-chiaro")
-    : apri(w.link, "Collegati", "btn-gold");
 
   return `
     <div class="wb-riga ${passato ? "finito" : ""}">
       <div class="wb-sx">
-        <div class="wb-data"><b>${String(d.getDate()).padStart(2, "0")}</b><span>${MESI[d.getMonth()]}</span></div>
+        <div class="wb-data"><b>${inRoma(d, { day: "2-digit" })}</b><span>${inRoma(d, { month: "short" })}</span></div>
         <div class="wb-info">
           <h4>${esc(w.titolo)}</h4>
-          <p class="wb-quando"><span class="wb-cat ${CATEGORIE[w.categoria] || ""}">${esc(w.categoria)}</span>${quando}</p>
+          <p class="wb-quando">${quando}</p>
+          ${w.argomento ? `<p class="wb-tema">${esc(w.argomento)}</p>` : ""}
         </div>
       </div>
       ${bottone}
@@ -120,14 +119,14 @@ function rigaWebinar(w) {
 }
 
 // Prima i prossimi in ordine di data, poi i passati dal più recente: in cima
-// c'è sempre quello a cui collegarsi adesso.
-function htmlWebinar(filtro) {
-  const scelti = WEBINAR.filter((w) => filtro === "Tutti" || w.categoria === filtro);
-  const prossimi = scelti.filter((w) => !finito(w)).sort((a, b) => a.data.localeCompare(b.data));
-  const passati = scelti.filter(finito).sort((a, b) => b.data.localeCompare(a.data));
+// c'è sempre quello a cui collegarsi adesso. Dei passati se ne tengono
+// cinque — è un calendario, non un archivio.
+function htmlWebinar(lista) {
+  const prossimi = lista.filter((w) => !finito(w)).sort((a, b) => a.data.localeCompare(b.data));
+  const passati = lista.filter(finito).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5);
   const righe = [...prossimi, ...passati];
   return righe.length ? righe.map(rigaWebinar).join("")
-    : `<div class="notice">Nessun webinar in calendario in questa categoria.</div>`;
+    : `<div class="notice">Nessun webinar in calendario al momento.</div>`;
 }
 
 // --------------------------------------------------------------- catalogo
@@ -136,7 +135,7 @@ function htmlWebinar(filtro) {
 // sola, il calendario finiva sotto le locandine e non lo vedeva nessuno. La
 // scheda scelta sta nella rotta (#/corsi/webinar), non in una variabile: così
 // il tasto indietro la rispetta e il link ai webinar si può mandare com'è.
-export function mostraCorsi(vista) {
+export async function mostraCorsi(vista) {
   const suWebinar = vista === "webinar";
   const accessible = (stato.catalogo ?? []).filter((c) => c.has_access);
   const locked = (stato.catalogo ?? []).filter((c) => !c.has_access);
@@ -164,18 +163,14 @@ export function mostraCorsi(vista) {
       </a>`;
   };
 
-  const pillola = (c) => `
-    <button class="wb-filtro ${c === "Tutti" ? "attiva" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`;
-
   const corpoCorsi = `
     ${accessible.length ? `<div class="grid">${accessible.map(card).join("")}</div>`
       : `<div class="notice">Non hai ancora corsi attivi. Scrivi al tuo consulente per l'accesso.</div>`}
     ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}`;
 
   const corpoWebinar = `
-    <p class="sub">3 sessioni a settimana. Collegati con un click, o recupera la registrazione dopo.</p>
-    <div class="wb-filtri">${["Tutti", ...Object.keys(CATEGORIE)].map(pillola).join("")}</div>
-    <div id="wb-elenco">${htmlWebinar("Tutti")}</div>`;
+    <p class="sub">Collegati con un click, o recupera la registrazione dopo.</p>
+    <div id="wb-elenco"><p class="sub">Carico il calendario…</p></div>`;
 
   app.innerHTML = pagina(`
     <h1>Formazione</h1>
@@ -188,12 +183,18 @@ export function mostraCorsi(vista) {
 
   if (!suWebinar) return;
 
-  // Il filtro ridisegna solo l'elenco: la pagina attorno non si muove.
-  const filtri = app.querySelectorAll(".wb-filtro");
-  filtri.forEach((b) => b.addEventListener("click", () => {
-    filtri.forEach((f) => f.classList.toggle("attiva", f === b));
-    document.getElementById("wb-elenco").innerHTML = htmlWebinar(b.dataset.cat);
-  }));
+  // Il contenitore si prende prima dell'attesa: se si cambia scheda mentre
+  // il file arriva, la scrittura tardiva cade nel vuoto, non sulla pagina
+  // nuova. Stessa cura di caricaMembri nel profilo.
+  const elenco = app.querySelector("#wb-elenco");
+  try {
+    const lista = await caricaWebinar();
+    if (!elenco.isConnected) return;
+    elenco.innerHTML = htmlWebinar(lista);
+  } catch (_) {
+    if (!elenco.isConnected) return;
+    elenco.innerHTML = `<div class="notice error">Non riesco a caricare il calendario. Ricarica la pagina fra poco.</div>`;
+  }
 }
 
 export function mostraCorso(slug) {
