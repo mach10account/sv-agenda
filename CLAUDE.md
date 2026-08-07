@@ -85,6 +85,18 @@ preso filtrando `type === 'text'`, mai con `content[0].text`.
   `privacy.html` di questo repo) si aggiornano **a mano dal pannello**: le
   modifiche via Graph API sono disabilitate per l'app.
 
+## Calendario webinar — non toccare webinar.json a mano
+
+`dev/webinar.json` è la **copia pubblicata** della tabella Notion "🎥 WEBINAR":
+ogni 2 ore la Action `webinar-sync.yml` scarica il calendario da un webhook
+n8n (`/webhook/webinar-calendario`, workflow `iSztxYF462pDNs3R`, che legge
+Notion con le sue credenziali) e committa il file **solo se è cambiato**.
+Una modifica a mano al file viene sovrascritta al giro successivo: **si
+corregge la tabella Notion**, non il JSON. Nel repo (pubblico) non c'è nessun
+segreto: il commit usa il `GITHUB_TOKEN` automatico del job. Prudenza
+incorporata: se Notion risponde con zero webinar ma il file ne ha, la Action
+non tocca nulla.
+
 ## Convenzioni
 
 - **Tutto in italiano**: UI, commenti, commit. I messaggi di commit raccontano
