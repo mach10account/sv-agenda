@@ -1,99 +1,64 @@
 -- =============================================================================
 -- Rubrica Clienti — tabelle e RPC per la sezione "Clienti" (dev/clienti.js)
 --
--- Da eseguire A MANO nel SQL editor di Supabase (progetto hypkwdvvrmakqrowbkqw).
--- Lo script è rieseguibile: tutto è `create or replace` / `if not exists`.
+-- Applicato al progetto hypkwdvvrmakqrowbkqw come migrazione `rubrica_clienti`;
+-- questo file è il riferimento nel repo. Rieseguibile: tutto è
+-- `create or replace` / `if not exists`.
 --
--- ⚠️ PRIMA DI LANCIARLO: lo script poggia su due ipotesi sui nomi già in uso
--- nello schema crm, che non ho potuto verificare. Controllale con queste due
--- query e, se i nomi reali sono diversi, correggili qui con un cerca-sostituisci:
---
---   1) Tabelle e colonne dello schema crm (mi aspetto crm.clienti con
---      id/centro/nome/cognome/telefono, crm.appuntamenti con
---      centro/cliente/giorno/stato, e una tabella membri crm.membri con
---      centro/utente):
---        select table_name, column_name from information_schema.columns
---         where table_schema = 'crm' order by 1, 2;
---
---   2) Come le RPC esistenti verificano l'appartenenza al centro (se hanno già
---      un loro helper, conviene far usare quello a crm.utente_del_centro):
---        select p.proname, pg_get_functiondef(p.oid) from pg_proc p
---          join pg_namespace n on n.oid = p.pronamespace
---         where n.nspname = 'public' and p.proname in ('crm_miei_centri', 'crm_anagrafiche');
+-- Nomi verificati sul database reale:
+--   crm.membri_centro(user_id, centro_id, ruolo)
+--   crm.clienti(id, centro_id, nome, cognome, telefono, email, note,
+--               consenso_marketing, created_at)
+--   crm.appuntamenti(centro_id, cliente_id, inizio, fine, stato, tipo, …)
+--   wa.conversations(cliente_id, …)   ← anche le chat bloccano l'eliminazione
 --
 -- Convenzioni (le stesse delle RPC esistenti):
---   · il frontend chiama solo wrapper sullo schema public, SECURITY DEFINER;
+--   · il frontend chiama solo wrapper sullo schema public;
 --   · risposta { ok:true, ... } oppure { ok:false, errore:'codice' } — i codici
 --     sono macchina-leggibili, i testi italiani vivono nel client;
 --   · gli elenchi semplici (segmenti) tornano come array puro.
 -- =============================================================================
 
-create schema if not exists crm;
-
 -- --------------------------------------------------------------- appartenenza
--- Ogni RPC comincia da qui: chi chiama deve essere membro del centro. L'helper
--- si crea solo se non esiste già — se le funzioni esistenti ne hanno uno con
--- questo nome è certamente più giusto del nostro e si riusa quello.
--- Se la tabella membri non si chiama crm.membri, la prima chiamata solleva un
--- errore leggibile (che il sito mostra) invece di negare o concedere in silenzio.
+-- Gemello di crm.e_titolare, senza il vincolo di ruolo: la rubrica è di tutto
+-- il centro, come l'agenda. Le RPC sono SECURITY DEFINER (scavalcano la RLS),
+-- quindi ognuna comincia da questo controllo.
 
-do $do$
-begin
-  if not exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'crm' and p.proname = 'utente_del_centro'
-  ) then
-    execute $sql$
-      create function crm.utente_del_centro(p_centro uuid) returns boolean
-      language plpgsql stable security definer set search_path = '' as $f$
-      begin
-        if to_regclass('crm.membri') is null then
-          raise exception 'Adattare crm.utente_del_centro in sql/clienti.sql: la tabella dei membri non si chiama crm.membri';
-        end if;
-        return exists (
-          select 1 from crm.membri m
-          where m.centro = p_centro and m.utente = auth.uid());
-      end $f$;
-    $sql$;
-  end if;
-end $do$;
+create or replace function crm.e_membro(p_centro uuid)
+returns boolean
+language sql stable security definer
+set search_path to 'crm', 'public' as $$
+  select exists (
+    select 1 from crm.membri_centro
+    where user_id = auth.uid() and centro_id = p_centro
+  );
+$$;
 
 -- ------------------------------------------------------------------- tabelle
+-- Un telefono, un cliente (per centro). L'indice è sul numero NORMALIZZATO:
+-- l'agenda ha salvato per mesi telefoni con spazi e trattini, e "333 1234567"
+-- e "3331234567" sono la stessa cliente. Se la creazione fallisce ci sono
+-- doppioni preesistenti da ripulire: il notice dice come trovarli.
 
-create table if not exists crm.clienti (
-  id         uuid primary key default gen_random_uuid(),
-  centro     uuid not null,
-  nome       text not null,
-  cognome    text,
-  telefono   text,
-  created_at timestamptz not null default now()
-);
-
--- La tabella clienti quasi certamente esiste già (la usa l'agenda): queste due
--- colonne sono le sole novità che la rubrica richiede.
-alter table crm.clienti add column if not exists email text;
-alter table crm.clienti add column if not exists created_at timestamptz not null default now();
-
--- Un telefono, un cliente (per centro): il controllo duplicati del modale e il
--- dedup dell'import contano su questo. Se fallisce ci sono doppioni
--- preesistenti da ripulire prima — il notice sotto dice come trovarli.
 do $do$
 begin
   create unique index if not exists clienti_centro_telefono_uniq
-    on crm.clienti (centro, telefono)
+    on crm.clienti (centro_id, regexp_replace(telefono, '\D', '', 'g'))
     where telefono is not null and telefono <> '';
 exception when others then
-  raise notice 'Indice unico su (centro, telefono) NON creato: %. Probabile causa: telefoni doppi preesistenti. Trovali con:  select centro, telefono, count(*) from crm.clienti where telefono is not null and telefono <> '''' group by 1, 2 having count(*) > 1;', sqlerrm;
+  raise notice 'Indice unico sul telefono NON creato: %. Probabile causa: doppioni. Trovali con:  select centro_id, regexp_replace(telefono, ''\D'', '''', ''g''), count(*) from crm.clienti where telefono is not null and telefono <> '''' group by 1, 2 having count(*) > 1;', sqlerrm;
 end $do$;
 
 -- I segmenti sono filtri salvati con un nome: compaiono nella barra "Liste".
+-- RLS accesa senza policy: ci si passa solo dalle RPC qui sotto.
 create table if not exists crm.segmenti_clienti (
   id         uuid primary key default gen_random_uuid(),
-  centro     uuid not null,
+  centro_id  uuid not null references crm.centri(id) on delete cascade,
   nome       text not null,
   filtri     jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
+alter table crm.segmenti_clienti enable row level security;
 
 -- ------------------------------------------------------------ filtri (helper)
 -- Un filtro è { campo, cond, v1, v2 }; campi e condizioni sono a lista chiusa,
@@ -106,13 +71,15 @@ create or replace function crm.clienti_condizione(
   f jsonb, p_nome text, p_cognome text, p_telefono text,
   p_creato timestamptz, p_n bigint, p_ultimo date
 ) returns boolean
-language plpgsql stable set search_path = '' as $f$
+language plpgsql stable
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_campo text := f->>'campo';
   v_cond  text := f->>'cond';
   v1      text := f->>'v1';
   v2      text := f->>'v2';
   v_pieno text := lower(trim(p_nome || ' ' || coalesce(p_cognome, '')));
+  v_tel   text := regexp_replace(coalesce(p_telefono, ''), '\D', '', 'g');
   v_tel1  text;
   v_data  date;
 begin
@@ -126,8 +93,8 @@ begin
   if v_campo = 'telefono' then
     v_tel1 := regexp_replace(coalesce(v1, ''), '\D', '', 'g');
     if v_tel1 = '' then return true; end if;
-    if v_cond = 'contiene' then return coalesce(p_telefono, '') like '%' || v_tel1 || '%'; end if;
-    if v_cond = 'uguale'   then return coalesce(p_telefono, '') = v_tel1; end if;
+    if v_cond = 'contiene' then return v_tel like '%' || v_tel1 || '%'; end if;
+    if v_cond = 'uguale'   then return v_tel = v_tel1; end if;
     return false;
   end if;
 
@@ -167,7 +134,7 @@ end $f$;
 -- ------------------------------------------------------------------- elenco
 -- Il cuore della rubrica: ricerca, filtri, ordinamento e pagina in un colpo
 -- solo, con i conteggi presi dall'agenda. Gli annullati non contano come
--- appuntamenti; "ultimo" è l'ultimo giorno già passato (o odierno).
+-- appuntamenti; "ultimo" è l'ultimo inizio già passato, nel fuso italiano.
 -- p_per_pagina ha un tetto a 10000: è la stessa via che usa l'export CSV.
 
 create or replace function public.crm_clienti(
@@ -178,7 +145,8 @@ create or replace function public.crm_clienti(
   p_pagina int default 1,
   p_per_pagina int default 25
 ) returns jsonb
-language plpgsql stable security definer set search_path = '' as $f$
+language plpgsql stable security definer
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_per    int  := least(greatest(coalesce(p_per_pagina, 25), 1), 10000);
   v_pag    int  := greatest(coalesce(p_pagina, 1), 1);
@@ -188,7 +156,7 @@ declare
   v_filtri jsonb := case when jsonb_typeof(p_filtri) = 'array' then p_filtri else '[]'::jsonb end;
   v_ris    jsonb;
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
   if v_campo not in ('nome', 'telefono', 'creato', 'n_appuntamenti', 'ultimo_appuntamento')
@@ -197,21 +165,23 @@ begin
   end if;
 
   with agg as (
-    select a.cliente,
-           count(*) filter (where a.stato <> 'annullato')                                          as n,
-           (max(a.giorno) filter (where a.stato <> 'annullato' and a.giorno <= current_date))::date as ultimo
+    select a.cliente_id,
+           count(*) filter (where a.stato <> 'annullato')             as n,
+           ((max(a.inizio) filter (where a.stato <> 'annullato' and a.inizio <= now()))
+              at time zone 'Europe/Rome')::date                       as ultimo
     from crm.appuntamenti a
-    where a.centro = p_centro and a.cliente is not null
-    group by a.cliente
+    where a.centro_id = p_centro and a.cliente_id is not null
+    group by a.cliente_id
   ), base as (
     select c.id, c.nome, c.cognome, c.telefono, c.email, c.created_at,
            coalesce(g.n, 0) as n_appuntamenti, g.ultimo as ultimo_appuntamento
     from crm.clienti c
-    left join agg g on g.cliente = c.id
-    where c.centro = p_centro
+    left join agg g on g.cliente_id = c.id
+    where c.centro_id = p_centro
       and (p_cerca is null or trim(p_cerca) = ''
            or (c.nome || ' ' || coalesce(c.cognome, '')) ilike '%' || trim(p_cerca) || '%'
-           or (v_cifre <> '' and coalesce(c.telefono, '') like '%' || v_cifre || '%'))
+           or (v_cifre <> '' and
+               regexp_replace(coalesce(c.telefono, ''), '\D', '', 'g') like '%' || v_cifre || '%'))
   ), filtrata as (
     select * from base b
     where not exists (
@@ -258,11 +228,10 @@ begin
 end $f$;
 
 -- ------------------------------------------------------------------ salva
--- Crea (p_id nullo) o aggiorna (p_id pieno). Funzione NUOVA e non un overload
--- di crm_salva_cliente: un secondo crm_salva_cliente con firma diversa
--- renderebbe ambigue le chiamate dell'agenda — compresa la radice congelata,
--- che non si può toccare. Il telefono qui è obbligatorio (è la rubrica), a
--- differenza dell'agenda dove può mancare.
+-- Crea (p_id nullo) o aggiorna (p_id pieno). Funzione NUOVA accanto a
+-- crm_salva_cliente, che resta com'è: la usa l'agenda in radice congelata.
+-- Qui il telefono è obbligatorio e si salva normalizzato a sole cifre; note e
+-- consenso_marketing non si toccano.
 
 create or replace function public.crm_clienti_salva(
   p_centro uuid,
@@ -272,12 +241,13 @@ create or replace function public.crm_clienti_salva(
   p_email text default null,
   p_id uuid default null
 ) returns jsonb
-language plpgsql security definer set search_path = '' as $f$
+language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_tel text := regexp_replace(coalesce(p_telefono, ''), '\D', '', 'g');
   v_id  uuid;
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
   if coalesce(trim(p_nome), '') = '' then
@@ -291,7 +261,7 @@ begin
   end if;
 
   if p_id is null then
-    insert into crm.clienti (centro, nome, cognome, telefono, email)
+    insert into crm.clienti (centro_id, nome, cognome, telefono, email)
     values (p_centro, trim(p_nome), nullif(trim(coalesce(p_cognome, '')), ''),
             v_tel, nullif(trim(coalesce(p_email, '')), ''))
     returning id into v_id;
@@ -301,7 +271,7 @@ begin
            cognome = nullif(trim(coalesce(p_cognome, '')), ''),
            telefono = v_tel,
            email = nullif(trim(coalesce(p_email, '')), '')
-     where id = p_id and centro = p_centro
+     where id = p_id and centro_id = p_centro
     returning id into v_id;
     if v_id is null then
       return jsonb_build_object('ok', false, 'errore', 'cliente_inesistente');
@@ -314,31 +284,35 @@ exception when unique_violation then
 end $f$;
 
 -- ---------------------------------------------------------------- eliminazione
--- Un cliente con appuntamenti non si elimina: la storia dell'agenda non si
--- butta (e c'è la FK a impedirlo comunque). Contano anche gli annullati.
--- La multipla elimina chi può e riporta gli id bloccati, così il sito può
--- dire "eliminati X, Y avevano appuntamenti".
+-- Un cliente con appuntamenti in agenda o una conversazione WhatsApp non si
+-- elimina: la storia non si butta, e le FK lo impedirebbero comunque. La
+-- multipla elimina chi può e riporta gli id bloccati, così il sito può dire
+-- "eliminati X, Y erano legati ad agenda o chat".
 
 create or replace function public.crm_clienti_elimina(
   p_centro uuid,
   p_ids uuid[]
 ) returns jsonb
-language plpgsql security definer set search_path = '' as $f$
+language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_bloccati uuid[];
   v_n int;
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
 
-  select coalesce(array_agg(distinct a.cliente), '{}')
-    into v_bloccati
-    from crm.appuntamenti a
-   where a.centro = p_centro and a.cliente = any(coalesce(p_ids, '{}'));
+  select coalesce(array_agg(distinct x.cid), '{}') into v_bloccati from (
+    select a.cliente_id as cid from crm.appuntamenti a
+     where a.centro_id = p_centro and a.cliente_id = any(coalesce(p_ids, '{}'))
+    union
+    select w.cliente_id from wa.conversations w
+     where w.cliente_id = any(coalesce(p_ids, '{}'))
+  ) x;
 
   delete from crm.clienti
-   where centro = p_centro and id = any(coalesce(p_ids, '{}'))
+   where centro_id = p_centro and id = any(coalesce(p_ids, '{}'))
      and not (id = any(v_bloccati));
   get diagnostics v_n = row_count;
 
@@ -348,19 +322,20 @@ end $f$;
 -- -------------------------------------------------------------------- import
 -- p_righe: array di { nome, cognome, telefono, email }. Il sito manda blocchi
 -- da 500; il tetto a 2000 para le chiamate costruite a mano. Righe senza nome
--- o con telefono non valido, doppie nel file o già presenti in rubrica si
--- saltano: l'import non sovrascrive mai un cliente esistente.
+-- o con telefono non valido, doppie nel file o già presenti in rubrica (a
+-- parità di numero normalizzato) si saltano: l'import non sovrascrive mai.
 
 create or replace function public.crm_clienti_importa(
   p_centro uuid,
   p_righe jsonb
 ) returns jsonb
-language plpgsql security definer set search_path = '' as $f$
+language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_tot int;
   v_importati int;
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
   if p_righe is null or jsonb_typeof(p_righe) <> 'array' then
@@ -372,10 +347,10 @@ begin
   end if;
 
   with grezze as (
-    select trim(coalesce(r->>'nome', ''))                          as nome,
-           nullif(trim(coalesce(r->>'cognome', '')), '')           as cognome,
+    select trim(coalesce(r->>'nome', ''))                              as nome,
+           nullif(trim(coalesce(r->>'cognome', '')), '')               as cognome,
            regexp_replace(coalesce(r->>'telefono', ''), '\D', '', 'g') as tel,
-           nullif(trim(coalesce(r->>'email', '')), '')             as email
+           nullif(trim(coalesce(r->>'email', '')), '')                 as email
     from jsonb_array_elements(p_righe) r
   ), valide as (
     select distinct on (tel) nome, cognome, tel, email
@@ -383,11 +358,13 @@ begin
     where nome <> '' and tel ~ '^\d{6,15}$'
     order by tel
   )
-  insert into crm.clienti (centro, nome, cognome, telefono, email)
+  insert into crm.clienti (centro_id, nome, cognome, telefono, email)
   select p_centro, v.nome, v.cognome, v.tel, v.email
   from valide v
-  where not exists (select 1 from crm.clienti c
-                    where c.centro = p_centro and c.telefono = v.tel);
+  where not exists (
+    select 1 from crm.clienti c
+    where c.centro_id = p_centro
+      and regexp_replace(coalesce(c.telefono, ''), '\D', '', 'g') = v.tel);
   get diagnostics v_importati = row_count;
 
   return jsonb_build_object('ok', true, 'importati', v_importati,
@@ -400,13 +377,14 @@ end $f$;
 -- membro non si dice niente: elenco vuoto.
 create or replace function public.crm_segmenti(p_centro uuid)
 returns table (id uuid, nome text, filtri jsonb)
-language plpgsql stable security definer set search_path = '' as $f$
+language plpgsql stable security definer
+set search_path to 'public', 'pg_temp' as $f$
 begin
-  if not crm.utente_del_centro(p_centro) then return; end if;
+  if not crm.e_membro(p_centro) then return; end if;
   return query
     select s.id, s.nome, s.filtri
     from crm.segmenti_clienti s
-    where s.centro = p_centro
+    where s.centro_id = p_centro
     order by lower(s.nome);
 end $f$;
 
@@ -416,12 +394,13 @@ create or replace function public.crm_segmenti_salva(
   p_filtri jsonb default '[]',
   p_id uuid default null
 ) returns jsonb
-language plpgsql security definer set search_path = '' as $f$
+language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $f$
 declare
   v_nome text := trim(coalesce(p_nome, ''));
   v_id uuid;
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
   if v_nome = '' or length(v_nome) > 80 then
@@ -429,13 +408,13 @@ begin
   end if;
 
   if p_id is null then
-    insert into crm.segmenti_clienti (centro, nome, filtri)
+    insert into crm.segmenti_clienti (centro_id, nome, filtri)
     values (p_centro, v_nome, coalesce(p_filtri, '[]'))
     returning id into v_id;
   else
     update crm.segmenti_clienti s
        set nome = v_nome, filtri = coalesce(p_filtri, '[]')
-     where s.id = p_id and s.centro = p_centro
+     where s.id = p_id and s.centro_id = p_centro
     returning s.id into v_id;
     if v_id is null then
       return jsonb_build_object('ok', false, 'errore', 'segmento_inesistente');
@@ -449,12 +428,13 @@ create or replace function public.crm_segmenti_elimina(
   p_centro uuid,
   p_id uuid
 ) returns jsonb
-language plpgsql security definer set search_path = '' as $f$
+language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $f$
 begin
-  if not crm.utente_del_centro(p_centro) then
+  if not crm.e_membro(p_centro) then
     return jsonb_build_object('ok', false, 'errore', 'non_autorizzato');
   end if;
-  delete from crm.segmenti_clienti s where s.id = p_id and s.centro = p_centro;
+  delete from crm.segmenti_clienti s where s.id = p_id and s.centro_id = p_centro;
   return jsonb_build_object('ok', true);
 end $f$;
 

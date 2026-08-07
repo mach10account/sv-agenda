@@ -1,10 +1,10 @@
 // La rubrica del centro: l'elenco dei clienti con ricerca, filtri salvabili
-// come liste, creazione e modifica in pannello, eliminazione (che rispetta
-// l'agenda: chi ha appuntamenti non si tocca) e scambio CSV nei due versi.
+// come liste, creazione e modifica in pannello, eliminazione (chi ha
+// appuntamenti in agenda o una chat WhatsApp non si tocca) e CSV nei due versi.
 // I clienti nascevano solo dentro il modale appuntamento dell'agenda; da qui
 // si vedono e si governano tutti.
 
-import { sb, app, stato, esc, pagina, erroreBox, avvisoBox, pannello } from "./core.js?v=22";
+import { sb, app, stato, esc, pagina, erroreBox, avvisoBox, pannello } from "./core.js?v=23";
 
 // Cosa si sta guardando: sopravvive al cambio sezione (come `giorno` in
 // agenda), si azzera solo ricaricando il sito.
@@ -417,7 +417,7 @@ function confermaElimina(box, ids, etichetta) {
   scheda.innerHTML = `
     <h2>${ids.length === 1 ? "Eliminare questo contatto?" : `Eliminare ${ids.length} contatti?`}</h2>
     <p class="sub">${etichetta ? esc(etichetta) + ". " : ""}L'operazione non si può annullare.
-      I contatti con appuntamenti in agenda non verranno eliminati.</p>
+      I contatti con appuntamenti in agenda o una conversazione WhatsApp non verranno eliminati.</p>
     <div id="cli-e-err"></div>
     <div class="scheda-azioni cli-azioni-scheda">
       <button class="btn-chiaro" id="cli-e-no">Annulla</button>
@@ -446,11 +446,11 @@ function confermaElimina(box, ids, etichetta) {
     const bloccati = (data.bloccati || []).length;
     if (bloccati === ids.length) {
       mostraEsito(box, erroreBox(ids.length === 1
-        ? "Impossibile eliminare: il contatto ha appuntamenti in agenda."
-        : "Nessun contatto eliminato: hanno tutti appuntamenti in agenda."));
+        ? "Impossibile eliminare: il contatto ha appuntamenti in agenda o una conversazione WhatsApp."
+        : "Nessun contatto eliminato: hanno tutti appuntamenti in agenda o una conversazione WhatsApp."));
     } else if (bloccati) {
       mostraEsito(box, avvisoBox(
-        `Eliminati ${data.eliminati}. ${bloccati} non eliminati: hanno appuntamenti in agenda.`));
+        `Eliminati ${data.eliminati}. ${bloccati} non eliminati: hanno appuntamenti o conversazioni.`));
     }
   };
 }
