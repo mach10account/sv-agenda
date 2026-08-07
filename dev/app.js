@@ -7,13 +7,13 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=23";
-import { mostraAgenda } from "./agenda.js?v=23";
-import { mostraConversazioni } from "./conversazioni.js?v=23";
-import { mostraClienti } from "./clienti.js?v=23";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=23";
-import { mostraAssistente } from "./assistente.js?v=23";
-import { mostraIntegrazioni } from "./integrazioni.js?v=23";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=24";
+import { mostraAgenda } from "./agenda.js?v=24";
+import { mostraConversazioni } from "./conversazioni.js?v=24";
+import { mostraClienti } from "./clienti.js?v=24";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=24";
+import { mostraAssistente } from "./assistente.js?v=24";
+import { mostraIntegrazioni } from "./integrazioni.js?v=24";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -38,7 +38,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=23" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=24" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 
@@ -85,7 +85,9 @@ const SEZIONI = [
   // Come l'agenda, per tutto il centro: i clienti li crea anche chi sta al bancone.
   { id: "clienti",       nome: "Clienti",       segno: "❖", gruppo: 1, disponibile: () => !!stato.centro },
   { id: "conversazioni", nome: "Conversazioni", segno: "✆", gruppo: 1, disponibile: () => stato.centro?.ruolo === "titolare" },
-  { id: "corsi",         nome: "Corsi",         segno: "▷", gruppo: 1, disponibile: haCorsi },
+  // La voce si chiama Formazione ma l'id resta "corsi": la rotta #/corsi gira
+  // da tempo nei link mandati ai centri, e un nome nuovo non deve romperli.
+  { id: "corsi",         nome: "Formazione",    segno: "▷", gruppo: 1, disponibile: haCorsi },
   { id: "assistente",    nome: "Assistente",    segno: "✦", gruppo: 1, disponibile: haCorsi },
   { id: "integrazioni",  nome: "Integrazioni",  segno: "⚙", gruppo: 2, disponibile: () => stato.centro?.ruolo === "titolare" },
   // Profilo è l'unica voce che c'è sempre: è da lì che si esce, e chi non ha
@@ -93,7 +95,7 @@ const SEZIONI = [
   { id: "profilo",       nome: "Profilo",       segno: "⋯", gruppo: 2, disponibile: () => !!stato.session },
 ];
 
-// Corso e lezione sono figli di "Corsi": la voce da accendere è quella.
+// Corso e lezione sono figli di "Formazione": la voce da accendere è quella.
 const TAB_DI = { corso: "corsi", lezione: "corsi" };
 
 const disponibili = () => SEZIONI.filter((s) => s.disponibile());

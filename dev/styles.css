@@ -1423,6 +1423,69 @@ a.btn { text-decoration: none; display: inline-block; }
 .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; flex: 1; }
 .bar > i { display: block; height: 100%; background: var(--oro); }
 
+/* ------------------------------------------------------------- webinar
+
+   Il calendario in fondo a Formazione: una riga per sessione, con la data in
+   un riquadro e il bottone per collegarsi — oro per il vivo, chiaro per le
+   registrazioni. I passati restano in fondo, spenti a metà. */
+
+.wb-filtri { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.wb-filtro {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wb-filtro:hover { background: var(--rosa-tenue); }
+.wb-filtro.attiva { background: var(--rosa); border-color: var(--rosa); color: #fff; }
+
+.wb-riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.wb-riga.finito { opacity: .62; }
+.wb-riga .btn { padding: 9px 18px; font-size: 14px; }
+
+.wb-sx { display: flex; align-items: center; gap: 15px; min-width: 0; }
+.wb-data {
+  flex: none;
+  min-width: 52px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--rosa-tenue);
+  text-align: center;
+}
+.wb-data b { display: block; font-size: 17px; line-height: 1.1; color: var(--rosa-scuro); }
+.wb-data span { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+
+.wb-info h4 { margin: 0; font-size: 15px; line-height: 1.35; }
+.wb-quando {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.wb-cat { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.wb-cat.vendita   { background: var(--rosa-tenue); color: var(--rosa-scuro); }
+.wb-cat.marketing { background: var(--oro-tenue);  color: #8a6516; }
+.wb-cat.numeri    { background: var(--ok-bg);      color: var(--ok); }
+
 /* ------------------------------------------------------------- lezioni */
 
 .lessons { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }

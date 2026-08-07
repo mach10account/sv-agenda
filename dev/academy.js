@@ -1,8 +1,9 @@
-// I corsi: catalogo, elenco lezioni e player. È l'Academy di prima, portata
-// dentro il sito unico; le rotte #/corso/<slug> e #/lezione/<id> sono rimaste
-// identiche perché in giro ci sono link già mandati ai centri.
+// La Formazione: catalogo dei corsi, elenco lezioni, player e calendario dei
+// webinar. È l'Academy di prima, portata dentro il sito unico; le rotte
+// #/corsi, #/corso/<slug> e #/lezione/<id> sono rimaste identiche perché in
+// giro ci sono link già mandati ai centri — è cambiato solo il nome a schermo.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=23";
+import { sb, app, stato, esc, pagina } from "./core.js?v=24";
 
 // Le descrizioni arrivano da GHL come HTML. Teniamo solo il minimo:
 // niente script, niente attributi, e i link si aprono in una scheda nuova.
@@ -51,6 +52,84 @@ export async function caricaCatalogo() {
   return true;
 }
 
+// ---------------------------------------------------------------- webinar
+
+// I webinar dal vivo non hanno ancora una tabella loro: il calendario si
+// aggiorna qui e si ripubblica, e le righe vecchie si tolgono a mano. Data e
+// ora sono locali — il pubblico è tutto in Italia. "link" è la stanza a cui
+// collegarsi, "registrazione" arriva dopo: finché uno dei due manca, il suo
+// bottone resta spento invece di portare nel vuoto.
+const WEBINAR = [
+  { data: "2026-08-11T18:00", titolo: "Come gestire le obiezioni sul prezzo in cabina",
+    categoria: "Vendita", relatore: "Giada", link: "", registrazione: "" },
+  { data: "2026-08-12T17:30", titolo: "Leggere il conto economico del tuo centro estetico",
+    categoria: "Numeri & Margini", relatore: "Federico", link: "", registrazione: "" },
+  { data: "2026-08-14T18:00", titolo: "Costruire un'offerta che il cliente non può rifiutare",
+    categoria: "Marketing", relatore: "Matteo", link: "", registrazione: "" },
+  { data: "2026-07-28T18:00", titolo: "Script di riattivazione: le prime 10 chiamate",
+    categoria: "Vendita", relatore: "Giada", link: "", registrazione: "" },
+];
+
+// Le categorie con la loro classe di colore. Anche i filtri nascono da qui:
+// una categoria nuova si aggiunge in questa riga e basta.
+const CATEGORIE = { "Vendita": "vendita", "Marketing": "marketing", "Numeri & Margini": "numeri" };
+
+const MESI = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+const SETTIMANA = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+
+// Un webinar resta "in corso" per due ore dall'inizio: chi apre la pagina a
+// sessione iniziata deve ancora potersi collegare.
+const finito = (w) => new Date(w.data).getTime() < Date.now() - 2 * 3600 * 1000;
+
+// "Oggi" e "Domani" a voce, come lo si direbbe; da lì in poi il giorno della
+// settimana, che per una che lavora su appuntamenti dice più del numero.
+function quandoWebinar(w) {
+  const d = new Date(w.data);
+  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(d).setHours(0, 0, 0, 0) - oggi) / 86400000);
+  const giorno = diff === 0 ? "Oggi" : diff === 1 ? "Domani" : `${SETTIMANA[d.getDay()]} ${d.getDate()}`;
+  return `${giorno}, ${w.data.slice(11, 16)}`;
+}
+
+function rigaWebinar(w) {
+  const d = new Date(w.data);
+  const passato = finito(w);
+
+  const quando = passato
+    ? (w.registrazione ? "Registrazione disponibile" : "Registrazione in arrivo")
+    : `${quandoWebinar(w)} · con ${esc(w.relatore)}`;
+
+  const apri = (url, testo, classe) => url
+    ? `<a class="btn ${classe}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${testo}</a>`
+    : `<button class="btn ${classe}" disabled>${testo}</button>`;
+  const bottone = passato
+    ? apri(w.registrazione, "Rivedi", "btn-chiaro")
+    : apri(w.link, "Collegati", "btn-gold");
+
+  return `
+    <div class="wb-riga ${passato ? "finito" : ""}">
+      <div class="wb-sx">
+        <div class="wb-data"><b>${String(d.getDate()).padStart(2, "0")}</b><span>${MESI[d.getMonth()]}</span></div>
+        <div class="wb-info">
+          <h4>${esc(w.titolo)}</h4>
+          <p class="wb-quando"><span class="wb-cat ${CATEGORIE[w.categoria] || ""}">${esc(w.categoria)}</span>${quando}</p>
+        </div>
+      </div>
+      ${bottone}
+    </div>`;
+}
+
+// Prima i prossimi in ordine di data, poi i passati dal più recente: in cima
+// c'è sempre quello a cui collegarsi adesso.
+function htmlWebinar(filtro) {
+  const scelti = WEBINAR.filter((w) => filtro === "Tutti" || w.categoria === filtro);
+  const prossimi = scelti.filter((w) => !finito(w)).sort((a, b) => a.data.localeCompare(b.data));
+  const passati = scelti.filter(finito).sort((a, b) => b.data.localeCompare(a.data));
+  const righe = [...prossimi, ...passati];
+  return righe.length ? righe.map(rigaWebinar).join("")
+    : `<div class="notice">Nessun webinar in calendario in questa categoria.</div>`;
+}
+
 // --------------------------------------------------------------- catalogo
 
 export function mostraCorsi() {
@@ -80,12 +159,27 @@ export function mostraCorsi() {
       </a>`;
   };
 
+  const pillola = (c) => `
+    <button class="wb-filtro ${c === "Tutti" ? "attiva" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`;
+
   app.innerHTML = pagina(`
-    <h1>I tuoi corsi</h1>
-    <p class="sub">La tua formazione</p>
+    <h1>Formazione</h1>
+    <p class="sub">I tuoi corsi e i webinar dal vivo</p>
+    <h2>I tuoi corsi</h2>
     ${accessible.length ? `<div class="grid">${accessible.map(card).join("")}</div>`
       : `<div class="notice">Non hai ancora corsi attivi. Scrivi al tuo consulente per l'accesso.</div>`}
-    ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}`);
+    ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}
+    <h2>Calendario Webinar</h2>
+    <p class="sub">3 sessioni a settimana. Collegati con un click, o recupera la registrazione dopo.</p>
+    <div class="wb-filtri">${["Tutti", ...Object.keys(CATEGORIE)].map(pillola).join("")}</div>
+    <div id="wb-elenco">${htmlWebinar("Tutti")}</div>`);
+
+  // Il filtro ridisegna solo l'elenco: la pagina attorno non si muove.
+  const filtri = app.querySelectorAll(".wb-filtro");
+  filtri.forEach((b) => b.addEventListener("click", () => {
+    filtri.forEach((f) => f.classList.toggle("attiva", f === b));
+    document.getElementById("wb-elenco").innerHTML = htmlWebinar(b.dataset.cat);
+  }));
 }
 
 export function mostraCorso(slug) {
@@ -106,7 +200,7 @@ export function mostraCorso(slug) {
     </div>`).join("");
 
   app.innerHTML = pagina(`
-    <a class="back" href="#/corsi">← Tutti i corsi</a>
+    <a class="back" href="#/corsi">← Formazione</a>
     <h1>${esc(course.title)}</h1>
     <p class="sub">${esc(course.description || "")}</p>
     ${s.total ? `<div class="meta"><div class="bar"><i style="width:${s.pct}%"></i></div><span>${s.done} di ${s.total} completate</span></div>` : ""}
@@ -196,5 +290,5 @@ export const fermaWatermark = () => clearInterval(wmTimer);
 
 function mancante(msg = "Contenuto non trovato.") {
   app.innerHTML = pagina(
-    `<a class="back" href="#/corsi">← Tutti i corsi</a><div class="notice">${esc(msg)}</div>`);
+    `<a class="back" href="#/corsi">← Formazione</a><div class="notice">${esc(msg)}</div>`);
 }

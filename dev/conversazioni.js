@@ -14,7 +14,7 @@
 
 import {
   sb, app, stato, esc, erroreBox, avvisoBox, pannello, SUPABASE_URL, SUPABASE_KEY,
-} from "./core.js?v=23";
+} from "./core.js?v=24";
 
 // La riga della prova esiste anche prima che esista la conversazione: senza,
 // il posto dove provare il bot non si troverebbe finché non ci si è scritto.
