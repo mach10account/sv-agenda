@@ -4,7 +4,7 @@
 // spento, i servizi archiviati. Un servizio non si elimina mai — ha
 // appuntamenti passati che lo nominano — si archivia, e si può riattivare.
 
-import { sb, app, stato, esc, pagina, erroreBox, pannello } from "./core.js?v=28";
+import { sb, app, stato, esc, pagina, erroreBox, pannello } from "./core.js?v=29";
 
 // La ricerca sopravvive al cambio sezione, come `vista` nella rubrica: chi
 // stava cercando "manicure" e passa dall'agenda ritrova la griglia filtrata.

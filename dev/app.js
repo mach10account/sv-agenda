@@ -7,14 +7,14 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=28";
-import { mostraAgenda } from "./agenda.js?v=28";
-import { mostraConversazioni } from "./conversazioni.js?v=28";
-import { mostraClienti } from "./clienti.js?v=28";
-import { mostraServizi } from "./servizi.js?v=28";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=28";
-import { mostraAssistente } from "./assistente.js?v=28";
-import { mostraIntegrazioni } from "./integrazioni.js?v=28";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=29";
+import { mostraAgenda } from "./agenda.js?v=29";
+import { mostraConversazioni } from "./conversazioni.js?v=29";
+import { mostraClienti } from "./clienti.js?v=29";
+import { mostraServizi } from "./servizi.js?v=29";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=29";
+import { mostraAssistente } from "./assistente.js?v=29";
+import { mostraIntegrazioni } from "./integrazioni.js?v=29";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -39,7 +39,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=28" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=29" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 
@@ -68,6 +68,31 @@ bottoneStringi.addEventListener("click", () => {
 });
 
 applicaLarghezzaBarra();
+
+// ------------------------------------------------------------------- tema
+
+// La notte si sceglie una volta e resta scelta (localStorage). Al primo
+// ingresso comanda la preferenza di sistema. Il lampo bianco all'apertura lo
+// evita lo script inline di index.html, che mette la classe prima del dipinto.
+const TEMA = "sv-tema";
+const bottoneTema = document.getElementById("tema");
+
+function applicaTema() {
+  const scelta = localStorage.getItem(TEMA);
+  const scuro = scelta ? scelta === "scuro"
+    : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.body.classList.toggle("tema-scuro", scuro);
+  bottoneTema.textContent = scuro ? "☀" : "☾";
+  bottoneTema.title = scuro ? "Torna al tema chiaro" : "Modalità notturna";
+  bottoneTema.setAttribute("aria-label", bottoneTema.title);
+}
+
+bottoneTema.addEventListener("click", () => {
+  localStorage.setItem(TEMA, document.body.classList.contains("tema-scuro") ? "chiaro" : "scuro");
+  applicaTema();
+});
+
+applicaTema();
 
 let recovering = false;   // true mentre si sta impostando la password dal link
 let caricando = false;    // true mentre boot() sta ancora chiedendo centri e corsi
@@ -261,7 +286,7 @@ function renderNewPassword(dalRecupero) {
     const btn = e.target.querySelector("button");
 
     if (p1 !== p2) {
-      app.querySelector(".sub").innerHTML = `<span style="color:#8d2b25">Le due password non coincidono.</span>`;
+      app.querySelector(".sub").innerHTML = `<span style="color:var(--rosso)">Le due password non coincidono.</span>`;
       return;
     }
     btn.disabled = true;
@@ -271,7 +296,7 @@ function renderNewPassword(dalRecupero) {
     if (error) {
       btn.disabled = false;
       btn.textContent = "Riprova";
-      app.querySelector(".sub").innerHTML = `<span style="color:#8d2b25">${esc(error.message)}</span>`;
+      app.querySelector(".sub").innerHTML = `<span style="color:var(--rosso)">${esc(error.message)}</span>`;
       return;
     }
     recovering = false;

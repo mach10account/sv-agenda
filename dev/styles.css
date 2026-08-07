@@ -12,6 +12,53 @@
   --bg: #fdfafb;
   --ok: #2f8f6b;
   --ok-bg: #e8f4ef;
+
+  /* Tinte finora scritte sul posto, portate a variabile per il tema scuro.
+     I valori chiari sono ESATTAMENTE quelli di prima: carta-2..6 sono lavature
+     di bianco quasi uguali fra loro, tenute distinte apposta per non muovere
+     il tema chiaro nemmeno d'un pixel. */
+  --carta: #fff;
+  --campo: #fbfcfe;
+  --carta-2: #fafbfd;
+  --carta-3: #fcfcfd;
+  --carta-4: #fafbfc;
+  --carta-5: #f2f5fa;
+  --carta-6: #f6f4f7;
+  --oggi-tinta: #fdfbf6;
+  --grigino: #eef0f4;
+  --grigino-2: #e6e9ef;
+  --grigino-3: #e2e7f1;
+  --grigio-bordo: #c3cbdb;
+  --grigio-bordo-2: #c9d0e0;
+  --testo-spento: #c2c7d4;
+  --testo-spento-2: #b8bdcb;
+  --grigio-medio: #9aa3b5;
+  --grigio-testo: #4a5163;
+  --grigio-testo-2: #333a4b;
+  --rosso: #8d2b25;
+  --rosso-bg: #fdeceb;
+  --rosso-bordo: #f3c9c6;
+  --rosso-bordo-2: #f0cdca;
+  --rosso-bordo-3: #f0d4d1;
+  --rosso-bordo-4: #e3b6b2;
+  --festivo: #b26a6a;
+  --avviso-bg: #fff8e6;
+  --avviso-bordo: #f0e0b6;
+  --avviso-testo: #6b5514;
+  --ambra-bg: #fdf1e2;
+  --ambra-testo: #8a5a17;
+  --oro-testo: #8a6516;
+  --verde-bg: #e4f5ea;
+  --verde-testo: #1c6b39;
+  --wa-out: #dff3e3;
+  --rosa-bordo: #f0cddc;
+  --ombra: 58,32,44;
+  --velo-scuro: rgba(36,26,32,.38);
+  /* Testi dentro i blocchi-appuntamento: lo sfondo lì è la tinta del
+     trattamento (tenue() in agenda.js, trasparente), che sul tema scuro
+     diventa scura — e il nero fisso sopra sparirebbe. */
+  --testo-su-tinta: rgba(0,0,0,.55);
+  --testo-su-tinta-2: rgba(0,0,0,.45);
   --radius: 12px;
 
   /* Quanto spazio si porta via la barra di navigazione. Sono due misure e non
@@ -65,7 +112,7 @@ body {
   gap: 6px;
   padding: 18px 12px;
   width: var(--barra-w);
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
   border-right: 1px solid var(--line);
   box-shadow: 1px 0 0 rgba(217,164,65,.35);
@@ -188,7 +235,7 @@ body {
   flex: none;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--carta);
   color: var(--muted);
   font: inherit;
   font-size: 15px;
@@ -219,13 +266,13 @@ body {
 .login {
   max-width: 380px;
   margin: 64px auto;
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-top: 3px solid var(--oro);
   border-radius: 16px;
   padding: 26px 30px 30px;
   text-align: center;
-  box-shadow: 0 10px 34px rgba(58,32,44,.07);
+  box-shadow: 0 10px 34px rgba(var(--ombra),.07);
 }
 .login h1 { font-size: 21px; margin: 0 0 6px; }
 .login h1.titolo-marchio { font-size: inherit; }
@@ -293,20 +340,20 @@ body {
 /* Due avvisi diversi: giallo quando c'è qualcosa da sapere, rosso quando
    qualcosa non ha funzionato. Il colore deve dirlo prima delle parole. */
 .notice {
-  background: #fff8e6;
-  border: 1px solid #f0e0b6;
-  color: #6b5514;
+  background: var(--avviso-bg);
+  border: 1px solid var(--avviso-bordo);
+  color: var(--avviso-testo);
   padding: 11px 14px;
   border-radius: 9px;
   font-size: 14px;
   margin-bottom: 14px;
 }
-.notice.error { background: #fdeceb; border-color: #f3c9c6; color: #8d2b25; }
+.notice.error { background: var(--rosso-bg); border-color: var(--rosso-bordo); color: var(--rosso); }
 
 /* --------------------------------------------------------- barra data */
 
 .testata {
-  background: #fff;
+  background: var(--carta);
   border-bottom: 1px solid var(--line);
   position: sticky;
   /* Si aggancia sotto la barra solo quando la barra è in cima: di lato quel
@@ -345,16 +392,16 @@ body {
 stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 <circle cx='11' cy='11' r='7'/><path d='M20 20l-3.5-3.5'/></svg>") no-repeat 11px center / 16px;
 }
-.cerca-box input:focus { outline: 2px solid var(--rosa); border-color: transparent; background-color: #fff; }
+.cerca-box input:focus { outline: 2px solid var(--rosa); border-color: transparent; background-color: var(--carta); }
 
 .cerca-esiti {
   position: absolute;
   top: calc(100% + 6px);
   left: 0; right: 0;
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(58,32,44,.14);
+  box-shadow: 0 8px 28px rgba(var(--ombra),.14);
   overflow: hidden;
   z-index: 25;
   display: none;
@@ -371,7 +418,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   text-align: left;
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   padding: 9px 13px;
   font-family: inherit;
   cursor: pointer;
@@ -419,10 +466,10 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   top: calc(100% + 8px);
   left: 0;
   z-index: 40;
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-radius: 14px;
-  box-shadow: 0 10px 34px rgba(58,32,44,.16);
+  box-shadow: 0 10px 34px rgba(var(--ombra),.16);
   padding: 14px;
   width: 292px;
 }
@@ -448,7 +495,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   color: var(--ink);
   font-family: inherit;
 }
-.cal-nav:hover { background: #e2e7f1; }
+.cal-nav:hover { background: var(--grigino-3); }
 
 .cal-gg {
   display: grid;
@@ -475,7 +522,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   color: var(--ink);
 }
 .cg:hover { background: var(--rosa-tenue); }
-.cg.fuori { color: #c2c7d4; }
+.cg.fuori { color: var(--testo-spento); }
 .cg.oggi { color: var(--oro); font-weight: 700; }
 .cg.scelto { background: var(--rosa); color: #fff; font-weight: 650; }
 
@@ -510,7 +557,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .gday:hover { background: var(--rosa-tenue); }
 .gday .gg { font-size: 11px; color: var(--muted); text-transform: capitalize; }
 .gday .nn { font-size: 19px; font-weight: 650; line-height: 1.1; }
-.gday.festivo .gg, .gday.festivo .nn { color: #b26a6a; }
+.gday.festivo .gg, .gday.festivo .nn { color: var(--festivo); }
 .gday.oggi .nn { color: var(--oro); }
 .gday.scelto { background: var(--rosa); }
 .gday.scelto .gg, .gday.scelto .nn { color: #fff; }
@@ -539,14 +586,14 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   color: var(--muted);
 }
 .rg:hover { color: var(--ink); }
-.rg.attiva { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(58,32,44,.12); }
+.rg.attiva { background: var(--carta); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(var(--ombra),.12); }
 
-.colonna.orfani { background-color: #fcfcfd; }
+.colonna.orfani { background-color: var(--carta-3); }
 
 
 .nav-btn {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: 8px;
   width: 32px; height: 32px;
   font-size: 16px;
@@ -557,7 +604,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .nav-btn:hover { background: var(--rosa-tenue); }
 .oggi-btn {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 13.5px;
@@ -584,7 +631,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   color: var(--muted);
 }
 .vista:hover { color: var(--ink); }
-.vista.attiva { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(58,32,44,.12); }
+.vista.attiva { background: var(--carta); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(var(--ombra),.12); }
 
 /* ------------------------------------------------- intestazioni settimana */
 
@@ -592,7 +639,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .testa .nn { display: block; font-size: 17px; font-weight: 650; line-height: 1.2; }
 .testa.oggi .nn { color: var(--oro); }
 .testa.oggi .gg { color: var(--oro); }
-.colonna.oggi { background-color: #fdfbf6; }
+.colonna.oggi { background-color: var(--oggi-tinta); }
 
 /* ---------------------------------------------------------- vista mese */
 
@@ -630,7 +677,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   aspect-ratio: 1 / .82;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--carta);
   padding: 8px;
   text-align: left;
   font-family: inherit;
@@ -640,9 +687,9 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   gap: 2px;
   transition: background .12s, border-color .12s;
 }
-.cella:hover { background: var(--rosa-tenue); border-color: #c9d0e0; }
-.cella.fuori { background: #fafbfd; }
-.cella.fuori .num { color: #b8bdcb; }
+.cella:hover { background: var(--rosa-tenue); border-color: var(--grigio-bordo-2); }
+.cella.fuori { background: var(--carta-2); }
+.cella.fuori .num { color: var(--testo-spento-2); }
 .cella.oggi { border-color: var(--oro); border-width: 2px; padding: 7px; }
 
 .cella .num { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -682,7 +729,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   display: grid;
   width: 100%;
   min-width: max-content;
-  background: #fff;
+  background: var(--carta);
   border-bottom: 1px solid var(--line);
 }
 
@@ -696,7 +743,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   position: sticky;
   top: 0;
   z-index: 15;
-  background: #fff;
+  background: var(--carta);
   border-bottom: 1px solid var(--line);
 }
 
@@ -744,7 +791,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
     repeating-linear-gradient(
       to bottom,
       transparent 0, transparent var(--slot-h),
-      #eef0f5 var(--slot-h), #eef0f5 calc(var(--slot-h) + 1px),
+      var(--grigino) var(--slot-h), var(--grigino) calc(var(--slot-h) + 1px),
       transparent calc(var(--slot-h) + 1px), transparent calc(var(--slot-h) * 2)
     );
 }
@@ -774,7 +821,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .appuntamento .c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .appuntamento .h { font-weight: 650; }
 .appuntamento .c { font-weight: 600; }
-.appuntamento .t { color: rgba(0,0,0,.55); }
+.appuntamento .t { color: var(--testo-su-tinta); }
 
 /* Blocchi della settimana: ora sopra, cliente sotto, entrambi su una riga. */
 .appuntamento.compatto { padding: 4px 6px; font-size: 12px; line-height: 1.25; }
@@ -786,7 +833,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   position: absolute;
   top: 4px; right: 6px;
   font-size: 12px;
-  color: rgba(0,0,0,.45);
+  color: var(--testo-su-tinta-2);
 }
 
 .vuoto {
@@ -800,7 +847,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .velo {
   position: fixed;
   inset: 0;
-  background: rgba(36,26,32,.38);
+  background: var(--velo-scuro);
   /* Copre anche la barra — con un pannello aperto la navigazione non dev'essere
      cliccabile — ma la scheda si centra sullo spazio che resta al contenuto,
      non sullo schermo, altrimenti risulta spostata di mezza barra. */
@@ -811,7 +858,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   z-index: 50;
 }
 .scheda {
-  background: #fff;
+  background: var(--carta);
   border-radius: 16px 16px 0 0;
   width: 100%;
   max-width: 460px;
@@ -846,7 +893,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
   border-radius: 9px;
   font-size: 15px;
   font-family: inherit;
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
 }
 .scheda input:focus,
@@ -864,7 +911,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .ris {
   text-align: left;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   padding: 9px 12px;
   font-size: 14.5px;
   font-family: inherit;
@@ -879,7 +926,7 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .stati { display: flex; gap: 7px; flex-wrap: wrap; }
 .stato {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: 999px;
   padding: 7px 13px;
   font-size: 13.5px;
@@ -894,13 +941,13 @@ stroke='%2385717b' stroke-width='2' stroke-linecap='round'>\
 .azioni .btn { flex: 1; }
 
 .btn-chiaro {
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
   border: 1px solid var(--line);
 }
 .btn-chiaro:hover { background: var(--rosa-tenue); }
-.btn-chiaro.pericolo { color: #8d2b25; border-color: #f0cdca; }
-.btn-chiaro.pericolo:hover { background: #fdeceb; }
+.btn-chiaro.pericolo { color: var(--rosso); border-color: var(--rosso-bordo-2); }
+.btn-chiaro.pericolo:hover { background: var(--rosso-bg); }
 
 /* --------------------------------------------------------- spostamento */
 
@@ -921,7 +968,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   align-items: center;
   gap: 14px;
   z-index: 40;
-  box-shadow: 0 6px 24px rgba(58,32,44,.28);
+  box-shadow: 0 6px 24px rgba(var(--ombra),.28);
   white-space: nowrap;
 }
 .annulla-spost {
@@ -940,7 +987,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   .scheda { border-radius: 16px; }
 }
 
-.esito.vuoto.errore { color: #8d2b25; }
+.esito.vuoto.errore { color: var(--rosso); }
 
 /* ------------------------------------------------ pannello appuntamento */
 
@@ -951,7 +998,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 .scheda-testa {
   position: sticky;
   top: -22px;
-  background: #fff;
+  background: var(--carta);
   z-index: 2;
   display: flex;
   align-items: center;
@@ -970,7 +1017,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 
 .tipo {
   border: 1.5px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: 12px;
   padding: 14px 12px;
   cursor: pointer;
@@ -981,7 +1028,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   gap: 4px;
   color: var(--ink);
 }
-.tipo:hover { border-color: #c3cbdb; }
+.tipo:hover { border-color: var(--grigio-bordo); }
 .tipo strong { font-size: 14.5px; }
 .tipo span { font-size: 12px; color: var(--muted); line-height: 1.35; }
 .tipo.attivo { border-color: var(--rosa); background: var(--rosa-tenue); }
@@ -990,12 +1037,12 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 
 /* Blocchi in griglia: neutri e rigati, si distinguono dagli appuntamenti. */
 .appuntamento.chiusura {
-  border-left-color: #9aa3b5;
-  color: #4a5163;
+  border-left-color: var(--grigio-medio);
+  color: var(--grigio-testo);
   background:
     repeating-linear-gradient(45deg,
-      #eef0f4 0, #eef0f4 6px,
-      #e6e9ef 6px, #e6e9ef 12px);
+      var(--grigino) 0, var(--grigino) 6px,
+      var(--grigino-2) 6px, var(--grigino-2) 12px);
 }
 .appuntamento.chiusura .h { font-weight: 600; opacity: .8; font-size: 11.5px; }
 .appuntamento.chiusura .c { font-weight: 650; }
@@ -1026,8 +1073,8 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   padding: 3px 10px;
   border-radius: 999px;
 }
-.badge-stato.on  { background: #e4f5ea; color: #1c6b39; }
-.badge-stato.off { background: #eef0f4; color: var(--muted); }
+.badge-stato.on  { background: var(--verde-bg); color: var(--verde-testo); }
+.badge-stato.off { background: var(--grigino); color: var(--muted); }
 
 .riga-switch {
   display: flex;
@@ -1049,19 +1096,19 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   padding: 11px 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
   font-size: 14.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
 }
-.btn-secondario:hover { border-color: #c3cbdb; background: #fafbfc; }
+.btn-secondario:hover { border-color: var(--grigio-bordo); background: var(--carta-4); }
 .btn-secondario:disabled { opacity: .5; cursor: default; }
 .pagina .btn-secondario { width: auto; }
 .pagina a.btn-secondario { display: inline-block; text-decoration: none; }
-.btn-secondario.pericolo { color: #8d2b25; border-color: #f0d4d1; }
-.btn-secondario.pericolo:hover { background: #fdeceb; border-color: #e3b6b2; }
+.btn-secondario.pericolo { color: var(--rosso); border-color: var(--rosso-bordo-3); }
+.btn-secondario.pericolo:hover { background: var(--rosso-bg); border-color: var(--rosso-bordo-4); }
 
 /* ------------------------------------------------------------- profilo */
 
@@ -1099,7 +1146,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   border-radius: 9px;
   font-size: 15px;
   font-family: inherit;
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
 }
 .campo input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
@@ -1127,7 +1174,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fff;
+  background: var(--carta);
 }
 .wa-schermo > .notice { margin: 16px; }
 .wa-schermo > .loading { margin: auto; padding: 0; }
@@ -1144,7 +1191,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   flex-shrink: 0;
   overflow-y: auto;
   border-right: 1px solid var(--line);
-  background: #fbfcfe;
+  background: var(--campo);
 }
 
 .wa-voce {
@@ -1159,7 +1206,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   color: inherit;
   cursor: pointer;
 }
-.wa-voce:hover { background: #f2f5fa; }
+.wa-voce:hover { background: var(--carta-5); }
 .wa-voce.attiva { background: var(--rosa-tenue); }
 .wa-voce.prova strong::before { content: "✦ "; color: var(--oro); }
 
@@ -1192,8 +1239,8 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   font-weight: 650;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fdf1e2;
-  color: #8a5a17;
+  background: var(--ambra-bg);
+  color: var(--ambra-testo);
 }
 
 .wa-thread {
@@ -1222,7 +1269,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
 }
 
 .btn-mini {
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 4px 12px;
@@ -1233,7 +1280,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   cursor: pointer;
   white-space: nowrap;
 }
-.btn-mini:hover { border-color: #c3cbdb; }
+.btn-mini:hover { border-color: var(--grigio-bordo); }
 .btn-mini:disabled { opacity: .5; cursor: default; }
 
 .wa-nota {
@@ -1241,7 +1288,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   padding: 9px 18px;
   font-size: 12.5px;
   color: var(--muted);
-  background: #fbfcfe;
+  background: var(--campo);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1263,10 +1310,10 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 1px 1px rgba(58,32,44,.06);
+  box-shadow: 0 1px 1px rgba(var(--ombra),.06);
 }
-.wa-bolla.in  { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; }
-.wa-bolla.out { align-self: flex-end; background: #dff3e3; border-bottom-right-radius: 4px; }
+.wa-bolla.in  { align-self: flex-start; background: var(--carta); border-bottom-left-radius: 4px; }
+.wa-bolla.out { align-self: flex-end; background: var(--wa-out); border-bottom-right-radius: 4px; }
 
 .wa-ora {
   display: block;
@@ -1304,7 +1351,7 @@ body.in-spostamento .appuntamento { pointer-events: none; opacity: .5; }
   gap: 8px;
   padding: 12px 18px;
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
 }
 .wa-scrivi input {
   flex: 1;
@@ -1374,7 +1421,7 @@ a.btn { text-decoration: none; display: inline-block; }
 }
 
 .card {
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
@@ -1384,7 +1431,7 @@ a.btn { text-decoration: none; display: inline-block; }
   flex-direction: column;
   transition: box-shadow .15s, transform .15s;
 }
-.card:hover { box-shadow: 0 8px 26px rgba(214,73,127,.13); transform: translateY(-2px); border-color: #f0cddc; }
+.card:hover { box-shadow: 0 8px 26px rgba(214,73,127,.13); transform: translateY(-2px); border-color: var(--rosa-bordo); }
 .card.locked { opacity: .78; }
 
 .thumb {
@@ -1417,7 +1464,7 @@ a.btn { text-decoration: none; display: inline-block; }
   background: var(--rosa-tenue);
   color: var(--rosa);
 }
-.badge.gold { background: var(--oro-tenue); color: #8a6516; }
+.badge.gold { background: var(--oro-tenue); color: var(--oro-testo); }
 
 /* Quanto manca alla fine del corso. */
 .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; flex: 1; }
@@ -1441,7 +1488,7 @@ a.btn { text-decoration: none; display: inline-block; }
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px 16px;
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px 18px;
@@ -1471,7 +1518,7 @@ a.btn { text-decoration: none; display: inline-block; }
 
 /* ------------------------------------------------------------- lezioni */
 
-.lessons { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.lessons { border: 1px solid var(--line); border-radius: 14px; background: var(--carta); overflow: hidden; }
 .lesson {
   display: flex;
   align-items: center;
@@ -1518,7 +1565,7 @@ a.btn { text-decoration: none; display: inline-block; }
   user-select: none;
 }
 
-.lesson-desc { margin-top: 22px; color: #333a4b; }
+.lesson-desc { margin-top: 22px; color: var(--grigio-testo-2); }
 .lesson-desc a { color: var(--rosa); }
 
 .actions { display: flex; gap: 12px; align-items: center; margin-top: 22px; flex-wrap: wrap; }
@@ -1562,7 +1609,7 @@ a.btn { text-decoration: none; display: inline-block; }
 }
 .msg.ai {
   align-self: flex-start;
-  background: #fff;
+  background: var(--carta);
   border: 1px solid var(--line);
   border-bottom-left-radius: 5px;
 }
@@ -1601,7 +1648,7 @@ a.btn { text-decoration: none; display: inline-block; }
   border-radius: 999px;
   font-size: 15px;
   font-family: inherit;
-  background: #fff;
+  background: var(--carta);
 }
 .chat-form input:focus { outline: 2px solid var(--rosa); border-color: transparent; }
 .chat-form .btn { border-radius: 999px; }
@@ -1716,7 +1763,7 @@ a.btn { text-decoration: none; display: inline-block; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fbfcfe;
+  background: var(--campo);
 }
 
 .wa-lista-testa {
@@ -1725,7 +1772,7 @@ a.btn { text-decoration: none; display: inline-block; }
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--carta);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1736,10 +1783,10 @@ input.wa-cerca {
   border-radius: 999px;
   font: inherit;
   font-size: 13.5px;
-  background: #fbfcfe;
+  background: var(--campo);
   color: var(--ink);
 }
-input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: var(--carta); }
 
 /* Le pillole non vanno a capo: se non ci stanno scorrono di lato, come le voci
    della barra quando è in cima. Una riga di filtri alta il doppio ruberebbe
@@ -1760,7 +1807,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   padding: 5px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--carta);
   color: var(--muted);
   font: inherit;
   font-size: 12px;
@@ -1768,12 +1815,12 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   cursor: pointer;
   white-space: nowrap;
 }
-.wa-pil:hover { border-color: #c3cbdb; color: var(--ink); }
+.wa-pil:hover { border-color: var(--grigio-bordo); color: var(--ink); }
 .wa-pil.attiva {
   background: var(--rosa);
   border-color: var(--rosa);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(58,32,44,.12);
+  box-shadow: 0 1px 3px rgba(var(--ombra),.12);
 }
 
 .wa-pallino {
@@ -1811,7 +1858,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   font-weight: 650;
   letter-spacing: .3px;
 }
-.wa-avatar.prova { background: var(--oro-tenue); color: #8a5a17; }
+.wa-avatar.prova { background: var(--oro-tenue); color: var(--ambra-testo); }
 /* La scintilla adesso è dentro il tondo: due nello stesso rigo sono una di troppo. */
 .wa-voce.prova strong::before { content: none; }
 
@@ -1831,8 +1878,8 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   white-space: nowrap;
 }
 .wa-attesa.calma   { background: var(--ok-bg); color: var(--ok); }
-.wa-attesa.tiepida { background: #fdf1e2; color: #8a5a17; }
-.wa-attesa.calda   { background: #fdeceb; color: #8d2b25; }
+.wa-attesa.tiepida { background: var(--ambra-bg); color: var(--ambra-testo); }
+.wa-attesa.calda   { background: var(--rosso-bg); color: var(--rosso); }
 .wa-thread-testa .wa-attesa { margin-top: 0; }
 
 /* --------------------------------------------------- intestazione thread */
@@ -1855,14 +1902,14 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
 }
-.wa-fase:hover { border-color: #c3cbdb; }
+.wa-fase:hover { border-color: var(--grigio-bordo); }
 
 .wa-info {
   width: 26px;
@@ -1870,7 +1917,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: #fff;
+  background: var(--carta);
   color: var(--muted);
   font: inherit;
   font-size: 13px;
@@ -1878,7 +1925,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   font-style: italic;
   cursor: pointer;
 }
-.wa-info:hover { border-color: #c3cbdb; color: var(--ink); }
+.wa-info:hover { border-color: var(--grigio-bordo); color: var(--ink); }
 
 /* -------------------------------------------------------------- messaggi */
 
@@ -1912,7 +1959,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
 .wa-chiusa {
   padding: 10px 18px 12px;
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
 }
 .wa-chiusa-nota {
   margin: 0 0 8px;
@@ -1928,7 +1975,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   border-radius: 999px;
   font: inherit;
   font-size: 14.5px;
-  background: #f6f4f7;
+  background: var(--carta-6);
   color: var(--muted);
 }
 .wa-chiusa-riga .btn { border-radius: 999px; padding: 10px 20px; font-size: 14.5px; }
@@ -1950,14 +1997,14 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   padding: 7px 13px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--carta);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.wa-chip:hover { border-color: #c3cbdb; }
+.wa-chip:hover { border-color: var(--grigio-bordo); }
 .wa-chip.scelto { border-color: var(--ink); background: var(--wa-viola-tenue); }
 .wa-chip-lingua {
   font-size: 10.5px;
@@ -2064,7 +2111,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
 .cli-lista {
   text-align: left;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   padding: 9px 12px;
   font-size: 14px;
   font-family: inherit;
@@ -2084,7 +2131,7 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   border-radius: 6px;
   font-family: inherit;
 }
-.cli-lista-x:hover { color: #8d2b25; background: #fdeceb; }
+.cli-lista-x:hover { color: var(--rosso); background: var(--rosso-bg); }
 
 /* Il min-width è quello che fa scorrere la tabella dentro il suo contenitore
    invece di far sfondare la .pagina a un flex che non vuole stringersi. */
@@ -2100,10 +2147,10 @@ input.cli-cerca {
   border-radius: 999px;
   font: inherit;
   font-size: 13.5px;
-  background: #fbfcfe;
+  background: var(--campo);
   color: var(--ink);
 }
-input.cli-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+input.cli-cerca:focus { outline: none; border-color: var(--rosa); background: var(--carta); }
 
 .cli-esito { margin-top: 12px; }
 .cli-esito:empty, .cli-attivi:empty { display: none; }
@@ -2111,7 +2158,7 @@ input.cli-cerca:focus { outline: none; border-color: var(--rosa); background: #f
 .cli-attivi { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .cli-pillola {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: 999px;
   padding: 5px 11px;
   font-size: 13px;
@@ -2209,10 +2256,10 @@ input.srv-cerca {
   border-radius: 999px;
   font: inherit;
   font-size: 13.5px;
-  background: #fbfcfe;
+  background: var(--campo);
   color: var(--ink);
 }
-input.srv-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+input.srv-cerca:focus { outline: none; border-color: var(--rosa); background: var(--carta); }
 
 .srv-esito { margin-top: 12px; }
 .srv-esito:empty { display: none; }
@@ -2229,7 +2276,7 @@ input.srv-cerca:focus { outline: none; border-color: var(--rosa); background: #f
   align-items: center;
   gap: 12px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--carta);
   border-radius: var(--radius);
   padding: 14px 16px;
   cursor: pointer;
@@ -2276,3 +2323,102 @@ input.srv-cerca:focus { outline: none; border-color: var(--rosa); background: #f
   cursor: pointer;
 }
 .srv-swatch.scelto { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* --------------------------------------------------------- tema notturno */
+/* La modalità notturna non riscrive le regole: ridefinisce le variabili.
+   Ogni colore del foglio passa da una variabile, quindi basta questo blocco —
+   e il tema chiaro resta byte per byte quello di prima. La classe la mette
+   app.js sul body (bottone in fondo alla barra, scelta in localStorage; al
+   primo ingresso comanda la preferenza di sistema, applicata prima del
+   dipinto dallo script inline di index.html). */
+
+body.tema-scuro {
+  color-scheme: dark;   /* input, select e scrollbar nativi in scuro */
+
+  --rosa: #e0679a;
+  --rosa-scuro: #ef86af;      /* negli hover deve accendere, non spegnere */
+  --rosa-tenue: #372028;
+  --oro-tenue: #3a3123;
+  --ink: #f1e8ed;
+  --muted: #a8939e;
+  --line: #3a2e35;
+  --bg: #171114;
+  --ok: #5cb890;
+  --ok-bg: #21342b;
+
+  --carta: #221a1f;
+  --campo: #2c2229;
+  --carta-2: #1d1619;
+  --carta-3: #1d1619;
+  --carta-4: #2c2229;
+  --carta-5: #2c2229;
+  --carta-6: #261e23;
+  --oggi-tinta: #2a2118;
+  --grigino: #342a31;
+  --grigino-2: #3e3239;
+  --grigino-3: #3e3239;
+  --grigio-bordo: #4d3f47;
+  --grigio-bordo-2: #4d3f47;
+  --testo-spento: #6d5c65;
+  --testo-spento-2: #6d5c65;
+  --grigio-medio: #8d8194;
+  --grigio-testo: #b9aeb9;
+  --grigio-testo-2: #b6bcc9;
+  --rosso: #f2a49d;
+  --rosso-bg: #3d211f;
+  --rosso-bordo: #5e3733;
+  --rosso-bordo-2: #5e3733;
+  --rosso-bordo-3: #5e3733;
+  --rosso-bordo-4: #78453f;
+  --festivo: #d59090;
+  --avviso-bg: #342a10;
+  --avviso-bordo: #5d4d1e;
+  --avviso-testo: #e5ca89;
+  --ambra-bg: #372b16;
+  --ambra-testo: #e2b76c;
+  --oro-testo: #e6c887;
+  --verde-bg: #20372a;
+  --verde-testo: #82d2a6;
+  --wa-out: #24412f;
+  --rosa-bordo: #503040;
+  --wa-lavanda: #332b50;
+  --wa-viola: #b5a8ee;
+  --wa-viola-tenue: #2b2544;
+  --ombra: 0,0,0;
+  --velo-scuro: rgba(0,0,0,.55);
+  --testo-su-tinta: rgba(255,255,255,.75);
+  --testo-su-tinta-2: rgba(255,255,255,.6);
+}
+
+/* Il marchio ha la sagoma nera: sul fondo scuro sparirebbe. Gli si dà una
+   piastrella chiara, dello stesso bianco-rosa dello sfondo diurno. */
+body.tema-scuro .marchio,
+body.tema-scuro .marchio-grande {
+  background: #fdfafb;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+/* Il bottone della notte: gemello di .stringi ma con una classe sua, perché
+   .stringi sotto gli 820px sparisce e la notte deve restare anche sul
+   telefono. */
+.tema-btn {
+  margin-top: 8px;
+  align-self: flex-end;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--carta);
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tema-btn:hover { border-color: var(--rosa); color: var(--rosa); }
+
+@media (max-width: 820px) {
+  .tema-btn { margin-top: 0; align-self: center; }
+}
