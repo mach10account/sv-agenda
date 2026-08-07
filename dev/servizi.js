@@ -4,7 +4,7 @@
 // spento, i servizi archiviati. Un servizio non si elimina mai — ha
 // appuntamenti passati che lo nominano — si archivia, e si può riattivare.
 
-import { sb, app, stato, esc, pagina, erroreBox, pannello } from "./core.js?v=27";
+import { sb, app, stato, esc, pagina, erroreBox, pannello } from "./core.js?v=28";
 
 // La ricerca sopravvive al cambio sezione, come `vista` nella rubrica: chi
 // stava cercando "manicure" e passa dall'agenda ritrova la griglia filtrata.
@@ -18,6 +18,7 @@ const ERRORI = {
   durata_non_valida:   "Scegli una durata.",
   prezzo_non_valido:   "Il prezzo non può essere negativo.",
   servizio_inesistente: "Questo servizio non esiste più.",
+  descrizione_troppo_lunga: "La descrizione può arrivare a 2048 caratteri.",
 };
 const testoErrore = (data, error, altrimenti) =>
   ERRORI[data?.errore] || data?.errore || error?.message || altrimenti;
@@ -145,7 +146,8 @@ function allineaAnagrafiche() {
   if (!stato.anagrafiche) return;
   stato.anagrafiche.trattamenti = servizi
     .filter((s) => !s.archiviato)
-    .map(({ id, nome, durata, colore }) => ({ id, nome, durata, colore }))
+    .map(({ id, nome, durata, prezzo, colore, descrizione }) =>
+      ({ id, nome, durata, prezzo, colore, descrizione }))
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
@@ -160,6 +162,11 @@ function apriServizio(box, servizio) {
     <div class="campo"><label for="srv-f-nome">Titolo</label>
       <input id="srv-f-nome" maxlength="120" value="${esc(servizio?.nome || "")}"
              placeholder="Pulizia viso" autocomplete="off"></div>
+    <div class="campo"><label for="srv-f-descr">Descrizione</label>
+      <p class="srv-descr-aiuto">La receptionist WhatsApp risponde in base a queste
+         informazioni: cos'è il servizio, per chi è indicato, che benefici ha.</p>
+      <textarea id="srv-f-descr" maxlength="2048" rows="4"
+                placeholder="Una pulizia profonda del viso indicata per…">${esc(servizio?.descrizione || "")}</textarea></div>
     <div class="campo"><label for="srv-f-durata">Durata</label>
       <select id="srv-f-durata">
         ${DURATE.map((d) => `<option value="${d}" ${d === (servizio?.durata ?? 60) ? "selected" : ""}>
@@ -202,6 +209,9 @@ function apriServizio(box, servizio) {
     err.innerHTML = "";
     const nome = el("srv-f-nome").value.trim();
     const prezzo = el("srv-f-prezzo").value === "" ? 0 : Number(el("srv-f-prezzo").value);
+    // Stringa vuota, non null: per la RPC null vuol dire "non toccare" (è
+    // quello che manda un frontend vecchio in cache), la vuota svuota davvero.
+    const descrizione = el("srv-f-descr").value.trim();
     if (!nome) return void (err.innerHTML = erroreBox(ERRORI.nome_mancante));
     if (!(prezzo >= 0)) return void (err.innerHTML = erroreBox(ERRORI.prezzo_non_valido));
 
@@ -214,6 +224,7 @@ function apriServizio(box, servizio) {
       p_durata: Number(el("srv-f-durata").value),
       p_prezzo: prezzo,
       p_colore: colore,
+      p_descrizione: descrizione,
       p_id: servizio?.id ?? null,
     });
     if (error || !data?.ok) {
@@ -225,9 +236,10 @@ function apriServizio(box, servizio) {
     chiudi();
     // La lista si aggiorna in casa, senza richiedere tutto: quello che il
     // database ha accettato è quello che si è appena scritto.
-    if (servizio) Object.assign(servizio, { nome, durata: Number(el("srv-f-durata").value), prezzo, colore });
+    if (servizio) Object.assign(servizio, { nome, durata: Number(el("srv-f-durata").value), prezzo, colore,
+                                            descrizione: descrizione || null });
     else servizi.push({ id: data.id, nome, durata: Number(el("srv-f-durata").value),
-                        prezzo, colore, archiviato: false });
+                        prezzo, colore, descrizione: descrizione || null, archiviato: false });
     servizi.sort((a, b) => a.nome.localeCompare(b.nome));
     allineaAnagrafiche();
     if (!box.isConnected) return;

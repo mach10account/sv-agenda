@@ -2261,6 +2261,11 @@ input.srv-cerca:focus { outline: none; border-color: var(--rosa); background: #f
 /* ------------------------------------------- servizi: dentro la scheda */
 
 .srv-azioni-scheda { margin-top: 16px; justify-content: flex-end; }
+
+/* L'aiuto sotto "Descrizione": spiega a cosa serve il campo (lo legge la
+   receptionist WhatsApp), in tono spento come .scheda .quando. */
+.srv-descr-aiuto { margin: 2px 0 6px; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+
 .srv-colori { display: flex; gap: 9px; flex-wrap: wrap; }
 .srv-swatch {
   width: 28px;

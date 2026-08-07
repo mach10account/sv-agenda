@@ -7,14 +7,14 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=27";
-import { mostraAgenda } from "./agenda.js?v=27";
-import { mostraConversazioni } from "./conversazioni.js?v=27";
-import { mostraClienti } from "./clienti.js?v=27";
-import { mostraServizi } from "./servizi.js?v=27";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=27";
-import { mostraAssistente } from "./assistente.js?v=27";
-import { mostraIntegrazioni } from "./integrazioni.js?v=27";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=28";
+import { mostraAgenda } from "./agenda.js?v=28";
+import { mostraConversazioni } from "./conversazioni.js?v=28";
+import { mostraClienti } from "./clienti.js?v=28";
+import { mostraServizi } from "./servizi.js?v=28";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=28";
+import { mostraAssistente } from "./assistente.js?v=28";
+import { mostraIntegrazioni } from "./integrazioni.js?v=28";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -39,7 +39,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=27" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=28" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 

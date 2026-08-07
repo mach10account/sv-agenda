@@ -2,6 +2,9 @@
 -- Servizi — RPC per la sezione "Servizi" (dev/servizi.js)
 --
 -- Applicato al database il 7/8/2026, dopo aver verificato i nomi veri.
+-- Sempre il 7/8: colonna `descrizione` (max 2048) — è il testo che la
+-- receptionist WhatsApp usa per raccontare il servizio alle clienti; viaggia
+-- in crm_anagrafiche → wa_context → prompt di wa-inbound.
 -- La tabella dei trattamenti esiste già e NON è come l'aveva ipotizzata la
 -- prima stesura di questo file:
 --
@@ -39,6 +42,12 @@ begin
   end if;
 end $$;
 
+-- ---------------------------------------------------------------- colonne
+
+-- La descrizione è l'unica colonna aggiunta da questo file: alimenta l'AI,
+-- non compare nelle card. NULL e vuota sono la stessa cosa (niente da dire).
+alter table crm.trattamenti add column if not exists descrizione text;
+
 -- ------------------------------------------------------------------ lettura
 
 -- Tutto il listino, archiviati compresi: è la stessa schermata a mostrarli,
@@ -55,12 +64,13 @@ begin
   end if;
 
   select coalesce(jsonb_agg(jsonb_build_object(
-           'id',         t.id,
-           'nome',       t.nome,
-           'durata',     t.durata_minuti,
-           'prezzo',     t.prezzo,
-           'colore',     t.colore,
-           'archiviato', not t.attivo)
+           'id',          t.id,
+           'nome',        t.nome,
+           'durata',      t.durata_minuti,
+           'prezzo',      t.prezzo,
+           'colore',      t.colore,
+           'descrizione', t.descrizione,
+           'archiviato',  not t.attivo)
          order by t.nome), '[]'::jsonb)
     into v_servizi
     from crm.trattamenti t
