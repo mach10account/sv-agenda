@@ -88,14 +88,14 @@ preso filtrando `type === 'text'`, mai con `content[0].text`.
 ## Calendario webinar — non toccare webinar.json a mano
 
 `dev/webinar.json` è la **copia pubblicata** della tabella Notion "🎥 WEBINAR":
-ogni 2 ore la Action `webinar-sync.yml` scarica il calendario da un webhook
-n8n (`/webhook/webinar-calendario`, workflow `iSztxYF462pDNs3R`, che legge
-Notion con le sue credenziali) e committa il file **solo se è cambiato**.
-Una modifica a mano al file viene sovrascritta al giro successivo: **si
-corregge la tabella Notion**, non il JSON. Nel repo (pubblico) non c'è nessun
-segreto: il commit usa il `GITHUB_TOKEN` automatico del job. Prudenza
-incorporata: se Notion risponde con zero webinar ma il file ne ha, la Action
-non tocca nulla.
+ogni 2 ore il workflow n8n **`8dXkDRKNGKXiP6mV`** ("WEBINAR — Notion → sito
+ogni 2 ore") legge la tabella, la confronta col file e lo committa **solo se è
+cambiato** (commit "Calendario webinar riallineato alla tabella Notion",
+autore mach10, token fine-grained "n8n — calendario webinar sv-agenda":
+solo questo repo, solo Contents). Una modifica a mano al file viene
+sovrascritta al giro successivo: **si corregge la tabella Notion**, non il
+JSON. Prudenza incorporata: se Notion risponde con zero webinar ma il file ne
+ha, il workflow non tocca nulla.
 
 ## Convenzioni
 
