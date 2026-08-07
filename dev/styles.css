@@ -2003,3 +2003,146 @@ input.wa-cerca:focus { outline: none; border-color: var(--rosa); background: #ff
   margin-top: 18px;
 }
 .wa-azioni-scheda .btn-secondario { width: auto; }
+
+/* -------------------------------------------------------------- clienti
+
+   La rubrica: a sinistra le liste salvate (i filtri con un nome), a destra
+   toolbar e tabella. In colonna sui piccoli: le liste diventano una riga di
+   pillole scorrevoli, come i filtri delle conversazioni. */
+
+.cli-layout { display: flex; gap: 22px; align-items: flex-start; margin-top: 18px; }
+
+.cli-liste { flex: none; width: 200px; display: flex; flex-direction: column; gap: 6px; }
+.cli-lista-riga { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.cli-lista-riga .cli-lista { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cli-lista {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  color: var(--ink);
+}
+.cli-lista:hover { background: var(--rosa-tenue); }
+.cli-lista.attiva { border-color: var(--rosa); color: var(--rosa); font-weight: 600; background: var(--rosa-tenue); }
+.cli-lista-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.cli-lista-x:hover { color: #8d2b25; background: #fdeceb; }
+
+/* Il min-width è quello che fa scorrere la tabella dentro il suo contenitore
+   invece di far sfondare la .pagina a un flex che non vuole stringersi. */
+.cli-corpo { flex: 1; min-width: 0; }
+
+.cli-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+input.cli-cerca {
+  flex: 1;
+  min-width: 140px;
+  max-width: 260px;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13.5px;
+  background: #fbfcfe;
+  color: var(--ink);
+}
+input.cli-cerca:focus { outline: none; border-color: var(--rosa); background: #fff; }
+
+.cli-esito { margin-top: 12px; }
+.cli-esito:empty, .cli-attivi:empty { display: none; }
+
+.cli-attivi { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.cli-pillola {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.cli-tabella-scroll { overflow-x: auto; margin-top: 14px; }
+table.cli-tabella { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cli-tabella th, .cli-tabella td {
+  padding: 9px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.cli-tabella th {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cli-tabella th[data-ordina] { cursor: pointer; user-select: none; }
+.cli-tabella th[data-ordina]:hover { color: var(--ink); }
+.cli-tabella tbody tr:hover { background: var(--rosa-tenue); }
+.cli-tabella .vuoto { text-align: center; }
+.cli-tabella a { color: inherit; }
+.cli-col-check { width: 34px; }
+.cli-azioni { white-space: nowrap; text-align: right; }
+.cli-azioni .btn-mini { margin-left: 4px; }
+
+.cli-pag {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13.5px;
+  margin-top: 12px;
+}
+.cli-pag:empty { display: none; }
+
+/* ----------------------------------------------- clienti: dentro le schede */
+
+.cli-azioni-scheda { margin-top: 16px; justify-content: flex-end; }
+
+/* Il testo d'aiuto sotto il telefono eredita il grassetto di .campo > span:
+   è una spiegazione, non un'etichetta. */
+.campo .sub { font-weight: 400; margin-top: 5px; }
+
+.cli-fl-righe { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.cli-filtro { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+/* Dentro .scheda input e select nascono a tutta larghezza: qui stanno in riga. */
+.scheda .cli-filtro select { width: auto; padding: 7px 9px; font-size: 13.5px; }
+.scheda .cli-filtro input { width: auto; flex: 1; min-width: 90px; padding: 7px 9px; font-size: 13.5px; }
+.cli-f-e { color: var(--muted); font-size: 13px; }
+.cli-f-x { flex: none; }
+
+/* ------------------------------------------- clienti: la barra va in cima
+
+   Stesse soglie del resto del sito, e nello stesso ordine: la 820 PRIMA
+   della 620 — stessa specificità, comanda l'ultima scritta. */
+
+@media (max-width: 820px) {
+  .cli-layout { flex-direction: column; gap: 12px; }
+  .cli-liste {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .cli-lista { white-space: nowrap; border-radius: 999px; }
+  .cli-lista-riga { flex: none; }
+  /* In riga si scorre: i puntini di sospensione non servono più. */
+  .cli-lista-riga .cli-lista { overflow: visible; }
+}
+
+@media (max-width: 620px) {
+  .cli-col-sec { display: none; }
+  input.cli-cerca { max-width: none; }
+}
