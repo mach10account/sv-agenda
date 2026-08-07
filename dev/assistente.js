@@ -2,7 +2,7 @@
 // da cui ha preso la risposta, e le conversazioni restano salvate.
 // Il cervello sta nella edge function academy-chat; qui c'è solo la bolla.
 
-import { sb, app, stato, esc, pagina, SUPABASE_URL, SUPABASE_KEY } from "./core.js?v=24";
+import { sb, app, stato, esc, pagina, SUPABASE_URL, SUPABASE_KEY } from "./core.js?v=25";
 
 const CHAT_URL = `${SUPABASE_URL}/functions/v1/academy-chat`;
 

@@ -1423,11 +1423,17 @@ a.btn { text-decoration: none; display: inline-block; }
 .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; flex: 1; }
 .bar > i { display: block; height: 100%; background: var(--oro); }
 
+/* Le due schede di Formazione, Corsi e Webinar: lo stesso selettore
+   dell'agenda, ma fatto di link — la scheda scelta sta nella rotta. Sotto i
+   720px eredita da .viste la riga piena, mezza scheda per uno. */
+.commuta { display: inline-flex; margin-bottom: 24px; }
+.commuta .vista { text-decoration: none; text-align: center; padding: 8px 22px; font-size: 14.5px; }
+
 /* ------------------------------------------------------------- webinar
 
-   Il calendario in fondo a Formazione: una riga per sessione, con la data in
-   un riquadro e il bottone per collegarsi — oro per il vivo, chiaro per le
-   registrazioni. I passati restano in fondo, spenti a metà. */
+   Il calendario nella scheda Webinar di Formazione: una riga per sessione,
+   con la data in un riquadro e il bottone per collegarsi — oro per il vivo,
+   chiaro per le registrazioni. I passati restano in fondo, spenti a metà. */
 
 .wb-filtri { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .wb-filtro {

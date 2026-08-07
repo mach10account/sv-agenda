@@ -7,13 +7,13 @@
 // cosa quella persona ha davvero: chi fa solo i corsi non vede l'agenda, e
 // chi sta al bancone non vede le chat della titolare.
 
-import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=24";
-import { mostraAgenda } from "./agenda.js?v=24";
-import { mostraConversazioni } from "./conversazioni.js?v=24";
-import { mostraClienti } from "./clienti.js?v=24";
-import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=24";
-import { mostraAssistente } from "./assistente.js?v=24";
-import { mostraIntegrazioni } from "./integrazioni.js?v=24";
+import { sb, app, stato, esc, pagina, erroreBox } from "./core.js?v=25";
+import { mostraAgenda } from "./agenda.js?v=25";
+import { mostraConversazioni } from "./conversazioni.js?v=25";
+import { mostraClienti } from "./clienti.js?v=25";
+import { caricaCatalogo, mostraCorsi, mostraCorso, mostraLezione, fermaWatermark } from "./academy.js?v=25";
+import { mostraAssistente } from "./assistente.js?v=25";
+import { mostraIntegrazioni } from "./integrazioni.js?v=25";
 
 // Il recupero password passa da n8n, che genera il link e lo manda su WhatsApp.
 const RECOVERY_WEBHOOK = "https://n8n.srv1035791.hstgr.cloud/webhook/academy-recupero";
@@ -38,7 +38,7 @@ document.querySelectorAll(".marchio").forEach((m) => {
 // sotto sarebbe un doppione. Ricompare se l'immagine non arriva — una pagina
 // di accesso senza niente in cima non dice piu' dove sei.
 const MARCHIO_GRANDE =
-  `<img class="marchio-grande" src="logo.png?v=24" alt="Estetista Indipendente"
+  `<img class="marchio-grande" src="logo.png?v=25" alt="Estetista Indipendente"
         onerror="this.remove(); document.querySelector('.titolo-marchio').hidden = false">
    <h1 class="titolo-marchio" hidden><b>Estetista</b><i>Indipendente</i></h1>`;
 
@@ -463,7 +463,7 @@ function route() {
   if (sezione === "agenda")        pulizia = mostraAgenda();
   else if (sezione === "clienti")  mostraClienti();
   else if (sezione === "conversazioni") pulizia = mostraConversazioni();
-  else if (sezione === "corsi")    mostraCorsi();
+  else if (sezione === "corsi")    mostraCorsi(param);   // param: la scheda "webinar"
   else if (sezione === "corso")    mostraCorso(param);
   else if (sezione === "lezione")  mostraLezione(param);
   else if (sezione === "assistente") mostraAssistente(param, parti[3]);

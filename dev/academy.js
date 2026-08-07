@@ -3,7 +3,7 @@
 // #/corsi, #/corso/<slug> e #/lezione/<id> sono rimaste identiche perché in
 // giro ci sono link già mandati ai centri — è cambiato solo il nome a schermo.
 
-import { sb, app, stato, esc, pagina } from "./core.js?v=24";
+import { sb, app, stato, esc, pagina } from "./core.js?v=25";
 
 // Le descrizioni arrivano da GHL come HTML. Teniamo solo il minimo:
 // niente script, niente attributi, e i link si aprono in una scheda nuova.
@@ -132,7 +132,12 @@ function htmlWebinar(filtro) {
 
 // --------------------------------------------------------------- catalogo
 
-export function mostraCorsi() {
+// Corsi e webinar sono due schede della stessa voce: impilati in una pagina
+// sola, il calendario finiva sotto le locandine e non lo vedeva nessuno. La
+// scheda scelta sta nella rotta (#/corsi/webinar), non in una variabile: così
+// il tasto indietro la rispetta e il link ai webinar si può mandare com'è.
+export function mostraCorsi(vista) {
+  const suWebinar = vista === "webinar";
   const accessible = (stato.catalogo ?? []).filter((c) => c.has_access);
   const locked = (stato.catalogo ?? []).filter((c) => !c.has_access);
 
@@ -162,17 +167,26 @@ export function mostraCorsi() {
   const pillola = (c) => `
     <button class="wb-filtro ${c === "Tutti" ? "attiva" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`;
 
+  const corpoCorsi = `
+    ${accessible.length ? `<div class="grid">${accessible.map(card).join("")}</div>`
+      : `<div class="notice">Non hai ancora corsi attivi. Scrivi al tuo consulente per l'accesso.</div>`}
+    ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}`;
+
+  const corpoWebinar = `
+    <p class="sub">3 sessioni a settimana. Collegati con un click, o recupera la registrazione dopo.</p>
+    <div class="wb-filtri">${["Tutti", ...Object.keys(CATEGORIE)].map(pillola).join("")}</div>
+    <div id="wb-elenco">${htmlWebinar("Tutti")}</div>`;
+
   app.innerHTML = pagina(`
     <h1>Formazione</h1>
     <p class="sub">I tuoi corsi e i webinar dal vivo</p>
-    <h2>I tuoi corsi</h2>
-    ${accessible.length ? `<div class="grid">${accessible.map(card).join("")}</div>`
-      : `<div class="notice">Non hai ancora corsi attivi. Scrivi al tuo consulente per l'accesso.</div>`}
-    ${locked.length ? `<h2>Disponibili su richiesta</h2><div class="grid">${locked.map(card).join("")}</div>` : ""}
-    <h2>Calendario Webinar</h2>
-    <p class="sub">3 sessioni a settimana. Collegati con un click, o recupera la registrazione dopo.</p>
-    <div class="wb-filtri">${["Tutti", ...Object.keys(CATEGORIE)].map(pillola).join("")}</div>
-    <div id="wb-elenco">${htmlWebinar("Tutti")}</div>`);
+    <div class="viste commuta">
+      <a class="vista ${suWebinar ? "" : "attiva"}" href="#/corsi">Corsi</a>
+      <a class="vista ${suWebinar ? "attiva" : ""}" href="#/corsi/webinar">Webinar</a>
+    </div>
+    ${suWebinar ? corpoWebinar : corpoCorsi}`);
+
+  if (!suWebinar) return;
 
   // Il filtro ridisegna solo l'elenco: la pagina attorno non si muove.
   const filtri = app.querySelectorAll(".wb-filtro");
